@@ -328,3 +328,36 @@ for (const payload of [
     assert.match(JSON.stringify(result.content), /INVALID_RESPONSE/);
   });
 }
+
+await test('author profile redirection is an HTTP_301 tool error without an additional request', async (t) => {
+  const mock = mockFetch((request) => {
+    assert.equal(request.redirect, 'manual');
+    return new Response('', {
+      status: 301,
+      headers: {
+        Location: 'https://api.elsevier.com/content/author/author_id/2',
+      },
+    });
+  });
+  const client = await connect(
+    t,
+    new ScopusClient({ apiKey: 'test' }, mock.fetch),
+  );
+  const result = await client.callTool({
+    name: 'author_retrieval',
+    arguments: { author_id: '1' },
+  });
+  assert.equal(result.isError, true);
+  assert.equal(result.structuredContent, undefined);
+  assert.deepEqual(result.content, [
+    {
+      type: 'text',
+      text: JSON.stringify({
+        code: 'HTTP_301',
+        message: 'Scopus request failed (HTTP 301).',
+        status: 301,
+      }),
+    },
+  ]);
+  assert.equal(mock.requests.length, 1);
+});

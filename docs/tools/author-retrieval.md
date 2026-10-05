@@ -47,9 +47,10 @@ per-profile statuses: inspect them instead of treating HTTP success as proof tha
 every requested author was found.
 
 Elsevier can redirect superseded profiles. The shared HTTP client does not
-follow redirects, so these can produce `NETWORK_ERROR`. Use the current author
-identifier, or `alias: false` to request the original profile. No replacement
-profiles or additional pages are fetched automatically.
+follow redirects: replacement responses return an HTTP tool error such as
+`HTTP_301` with status `301`, preserving the one-request contract. Use the current
+author identifier, or `alias: false` to request the original profile. No
+replacement profiles or additional pages are fetched automatically.
 
 ## API reference
 

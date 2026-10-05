@@ -29,7 +29,7 @@ await test('MCP advertises the native input/output schemas and read-only annotat
   const mock = mockFetch(Response.json({}));
   const client = await connect(t, new ScopusClient({}, mock.fetch));
   const { tools } = await client.listTools();
-  const tool = tools.find((item) => item.name === 'scopus_search');
+  const tool = tools.find((tool) => tool.name === 'scopus_search');
   assert.ok(tool);
   assert.equal(tool.name, 'scopus_search');
   assert.equal(tool.annotations?.readOnlyHint, true);
