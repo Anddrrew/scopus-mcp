@@ -61,6 +61,6 @@ package-name availability must be checked before release.
 
 ## License
 
-MIT © 2026 Anddrrew. The license covers this project's code. Access to Elsevier
+MIT © 2026 Andrii Baran. The license covers this project's code. Access to Elsevier
 APIs and use of Scopus data remain subject to Elsevier's terms. This is an
 independent project, not an official Elsevier product.

@@ -4,7 +4,7 @@
   "description": "Scopus API access over the Model Context Protocol (stdio).",
   "type": "module",
   "license": "MIT",
-  "author": "Anddrrew",
+  "author": "Andrii Baran (https://github.com/Anddrrew)",
   "bin": {
     "scopus-mcp": "dist/index.js"
   },
