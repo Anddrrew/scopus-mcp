@@ -16,9 +16,23 @@ env:
 
 jobs:
   check:
-    name: Check (Node 24)
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Lint
+            command: npm run lint
+          - name: Typecheck
+            command: npm run typecheck
+          - name: Build
+            command: npm run build
+          - name: Test
+            command: npm test
+          - name: Package
+            command: npm pack --dry-run
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -28,13 +42,5 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Lint
-        run: npm run lint
-      - name: Typecheck
-        run: npm run typecheck
-      - name: Build
-        run: npm run build
-      - name: Test
-        run: npm run test:run
-      - name: Verify npm packaging
-        run: npm pack --dry-run --ignore-scripts
+      - name: ${{ matrix.name }}
+        run: ${{ matrix.command }}
