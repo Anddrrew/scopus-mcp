@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
-import { searchFixture } from './helpers/fixtures.js';
+import { searchFixture } from './helpers/fixtures';
 
 await test(
   'compiled CLI initializes, advertises search and reports missing credentials',

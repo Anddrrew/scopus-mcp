@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
 import { test } from 'node:test';
-import { ScopusClient } from '../../src/scopus/client.js';
-import { ScopusError } from '../../src/scopus/errors.js';
-import { searchFixture } from '../helpers/fixtures.js';
-import { mockFetch } from '../helpers/mock-fetch.js';
+import { ScopusClient } from '../../src/scopus/client';
+import { ScopusError } from '../../src/scopus/errors';
+import { searchFixture } from '../helpers/fixtures';
+import { mockFetch } from '../helpers/mock-fetch';
 
 const path = '/content/search/scopus';
 const config = { apiKey: 'test-api-key', instToken: 'test-inst-token' };

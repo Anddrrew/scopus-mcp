@@ -28,6 +28,17 @@ export default defineConfig(
       'no-console': ['error', { allow: ['error', 'warn'] }],
       eqeqeq: ['error', 'always', { null: 'ignore' }],
       '@typescript-eslint/switch-exhaustiveness-check': 'error',
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '^\\.{1,2}/.*\\.(?:[cm]?[jt]s|[jt]sx)$',
+              message: 'Use extensionless relative TypeScript imports.',
+            },
+          ],
+        },
+      ],
     },
   },
   {

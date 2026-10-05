@@ -1,5 +1,5 @@
-import type { Config } from '../config.js';
-import { apiError, ScopusError } from './errors.js';
+import type { Config } from '../config';
+import { apiError, ScopusError } from './errors';
 
 export class ScopusClient {
   constructor(

@@ -2,14 +2,14 @@ import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { Client } from '@modelcontextprotocol/client';
 import { InMemoryTransport } from '@modelcontextprotocol/server';
-import { createServer } from '../../src/server.js';
-import { ScopusClient } from '../../src/scopus/client.js';
+import { createServer } from '../../src/server';
+import { ScopusClient } from '../../src/scopus/client';
 import {
   inputSchema,
   outputSchema,
-} from '../../src/tools/scopus-search/schemas.js';
-import { searchFixture } from '../helpers/fixtures.js';
-import { mockFetch } from '../helpers/mock-fetch.js';
+} from '../../src/tools/scopus-search/schemas';
+import { searchFixture } from '../helpers/fixtures';
+import { mockFetch } from '../helpers/mock-fetch';
 
 async function connect(t: TestContext, upstream: ScopusClient) {
   const server = createServer(upstream);

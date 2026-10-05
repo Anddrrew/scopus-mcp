@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { readConfig } from '../src/config.js';
+import { readConfig } from '../src/config';
 
 await test('credentials are read only from explicit Elsevier environment variables', () => {
   assert.deepEqual(readConfig({}), {});

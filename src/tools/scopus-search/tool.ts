@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/server';
-import type { ScopusClient } from '../../scopus/client.js';
-import { ScopusError } from '../../scopus/errors.js';
-import { inputSchema, outputSchema } from './schemas.js';
+import type { ScopusClient } from '../../scopus/client';
+import { ScopusError } from '../../scopus/errors';
+import { inputSchema, outputSchema } from './schemas';
 
 export function registerScopusSearch(
   server: McpServer,

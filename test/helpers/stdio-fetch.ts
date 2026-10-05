@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { searchFixture } from './fixtures.js';
-import { mockFetch } from './mock-fetch.js';
+import { searchFixture } from './fixtures';
+import { mockFetch } from './mock-fetch';
 
 // Loaded only by the stdio subprocess test; production code uses native fetch.
 globalThis.fetch = mockFetch((request) => {

@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { McpServer } from '@modelcontextprotocol/server';
-import { readConfig } from './config.js';
-import { ScopusClient } from './scopus/client.js';
-import { registerScopusSearch } from './tools/scopus-search/tool.js';
+import { readConfig } from './config';
+import { ScopusClient } from './scopus/client';
+import { registerScopusSearch } from './tools/scopus-search/tool';
 
 const metadata = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8'),

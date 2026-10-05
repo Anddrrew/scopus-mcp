@@ -41,6 +41,9 @@ environment configuration in `config.ts`, shared HTTP code in `scopus/`, and
 tool handlers/schemas in `tools/<tool-name>/`. Tests mirror these areas under
 `test/`, with shared helpers in `test/helpers/` and synthetic Elsevier-shaped
 responses in `test/fixtures/`. Tests make no live Scopus requests and need no key.
+Local TypeScript imports omit file extensions; ESLint enforces this convention.
+`npm run build` checks types, clears `dist`, and uses esbuild to bundle the CLI as
+Node ESM, keeping npm dependencies external. Tests run the source through `tsx`.
 `npm test` builds first; `npm run test:run` uses the existing build.
 
 ## Local MCP client configuration
@@ -129,7 +132,7 @@ making a request.
 npm pack
 ```
 
-The prepack script compiles TypeScript. The package includes the compiled CLI,
+The prepack script checks types and builds the CLI. The package includes the bundled CLI,
 README, and license. It exposes the `scopus-mcp` executable.
 
 After publication under the final npm package name, clients can use `npx -y
