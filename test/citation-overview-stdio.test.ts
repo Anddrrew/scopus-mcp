@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+import { assertStartupLog } from './helpers/startup-log';
 
 await test(
   'compiled stdio registers citation overview and returns its native JSON',
@@ -55,9 +56,9 @@ await test(
           ),
         ) as unknown,
       );
-      assert.equal(stderr, '');
     } finally {
       await client.close();
     }
+    assertStartupLog(stderr, ['stdio-test-key']);
   },
 );

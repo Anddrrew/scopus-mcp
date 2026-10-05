@@ -11,7 +11,7 @@ import { registerPlumxMetrics } from './tools/plumx-metrics/tool';
 import { registerScopusSearch } from './tools/scopus-search/tool';
 import { registerSubjectClassifications } from './tools/subject-classifications/tool';
 
-const metadata = JSON.parse(
+export const serverMetadata = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
 ) as { name: string; version: string };
 
@@ -19,8 +19,11 @@ export function createServer(
   client = new ScopusClient(readConfig()),
 ): McpServer {
   const server = new McpServer(
-    { name: metadata.name, version: metadata.version },
-    { capabilities: { tools: {} } },
+    { name: serverMetadata.name, version: serverMetadata.version },
+    {
+      capabilities: { tools: {} },
+      instructions: `${serverMetadata.name} v${serverMetadata.version}. Tools use native Scopus API parameters and return structured JSON.`,
+    },
   );
   registerScopusSearch(server, client);
   registerAuthorSearch(server, client);
