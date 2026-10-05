@@ -3,6 +3,7 @@ import { McpServer } from '@modelcontextprotocol/server';
 import { readConfig } from './config';
 import { ScopusClient } from './scopus/client';
 import { registerScopusSearch } from './tools/scopus-search/tool';
+import { registerSubjectClassifications } from './tools/subject-classifications/tool';
 
 const metadata = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
@@ -16,5 +17,6 @@ export function createServer(
     { capabilities: { tools: {} } },
   );
   registerScopusSearch(server, client);
+  registerSubjectClassifications(server, client);
   return server;
 }
