@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { McpServer } from '@modelcontextprotocol/server';
 import { readConfig } from './config';
 import { ScopusClient } from './scopus/client';
+import { registerAffiliationSearch } from './tools/affiliation-search/tool';
 import { registerAuthorSearch } from './tools/author-search/tool';
 import { registerScopusSearch } from './tools/scopus-search/tool';
 
@@ -18,5 +19,6 @@ export function createServer(
   );
   registerScopusSearch(server, client);
   registerAuthorSearch(server, client);
+  registerAffiliationSearch(server, client);
   return server;
 }

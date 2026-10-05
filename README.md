@@ -59,10 +59,11 @@ without a key returns `MISSING_API_KEY`.
 
 ## Available tools
 
-| Tool            | Description                                                          | Reference                                    |
-| --------------- | -------------------------------------------------------------------- | -------------------------------------------- |
-| `scopus_search` | Search Scopus publications using native query syntax and pagination. | [Scopus Search](docs/tools/scopus-search.md) |
-| `author_search` | Search author profiles or find co-authors.                           | [Author Search](docs/tools/author-search.md) |
+| Tool                 | Description                                                          | Reference                                              |
+| -------------------- | -------------------------------------------------------------------- | ------------------------------------------------------ |
+| `scopus_search`      | Search Scopus publications using native query syntax and pagination. | [Scopus Search](docs/tools/scopus-search.md)           |
+| `author_search`      | Search author profiles or find co-authors.                           | [Author Search](docs/tools/author-search.md)           |
+| `affiliation_search` | Search institution profiles with native query syntax.                | [Affiliation Search](docs/tools/affiliation-search.md) |
 
 This table describes the checked-out revision. Use the README from your installed
 version's Git tag when working with an older npm release.
