@@ -45,29 +45,31 @@ messages on stdin; it does not provide an interactive prompt or an HTTP server.
 
 ## Configuration
 
-| Environment variable  | Purpose                                                                      |
-| --------------------- | ---------------------------------------------------------------------------- |
-| `ELSEVIER_API_KEY`    | Required to call API tools. Obtain a key from the Elsevier Developer Portal. |
-| `ELSEVIER_INST_TOKEN` | Optional institutional token, if provided by your institution.               |
+| Environment variable  | Purpose                                                                                |
+| --------------------- | -------------------------------------------------------------------------------------- |
+| `ELSEVIER_API_KEY`    | Required for authenticated API tools. Obtain a key from the Elsevier Developer Portal. |
+| `ELSEVIER_INST_TOKEN` | Optional institutional token, if provided by your institution.                         |
 
 Add the institutional token alongside the API key in the client's `env` object
 when needed. Credentials are sent in HTTP headers and are never tool arguments.
 Environment files such as `.env` are not loaded automatically.
 
-The server can start and list tools without credentials. Calling an API tool
-without a key returns `MISSING_API_KEY`.
+The server can start and list tools without credentials.
+`subject_classifications` uses a public endpoint and works without a key.
+Other API tools return `MISSING_API_KEY` when no key is configured.
 
 ## Available tools
 
-| Tool                    | Description                                                                  | Reference                                                    |
-| ----------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `scopus_search`         | Search Scopus publications using native query syntax and pagination.         | [Scopus Search](docs/tools/scopus-search.md)                 |
-| `author_search`         | Search author profiles or find co-authors.                                   | [Author Search](docs/tools/author-search.md)                 |
-| `affiliation_search`    | Search institution profiles with native query syntax.                        | [Affiliation Search](docs/tools/affiliation-search.md)       |
-| `author_retrieval`      | Retrieve one or multiple Scopus author profiles by author ID, EID, or ORCID. | [Author Retrieval](docs/tools/author-retrieval.md)           |
-| `affiliation_retrieval` | Retrieve a Scopus institution profile by affiliation ID or EID.              | [Affiliation Retrieval](docs/tools/affiliation-retrieval.md) |
-| `plumx_metrics`         | Retrieve publication metrics by DOI or another supported identifier.         | [PlumX Metrics](docs/tools/plumx-metrics.md)                 |
-| `citation_overview`     | Retrieve yearly citation counts and summaries for specified publications.    | [Citation Overview](docs/tools/citation-overview.md)         |
+| Tool                      | Description                                                                  | Reference                                                        |
+| ------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `scopus_search`           | Search Scopus publications using native query syntax and pagination.         | [Scopus Search](docs/tools/scopus-search.md)                     |
+| `author_search`           | Search author profiles or find co-authors.                                   | [Author Search](docs/tools/author-search.md)                     |
+| `affiliation_search`      | Search institution profiles with native query syntax.                        | [Affiliation Search](docs/tools/affiliation-search.md)           |
+| `author_retrieval`        | Retrieve one or multiple Scopus author profiles by author ID, EID, or ORCID. | [Author Retrieval](docs/tools/author-retrieval.md)               |
+| `affiliation_retrieval`   | Retrieve a Scopus institution profile by affiliation ID or EID.              | [Affiliation Retrieval](docs/tools/affiliation-retrieval.md)     |
+| `plumx_metrics`           | Retrieve publication metrics by DOI or another supported identifier.         | [PlumX Metrics](docs/tools/plumx-metrics.md)                     |
+| `citation_overview`       | Retrieve yearly citation counts and summaries for specified publications.    | [Citation Overview](docs/tools/citation-overview.md)             |
+| `subject_classifications` | Retrieve or filter Scopus subject codes and descriptions.                    | [Subject Classifications](docs/tools/subject-classifications.md) |
 
 This table describes the checked-out revision. Use the README from your installed
 version's Git tag when working with an older npm release.

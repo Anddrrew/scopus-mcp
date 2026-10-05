@@ -12,9 +12,10 @@ export class ScopusClient {
     path: string,
     params: Record<string, string | number | boolean | undefined>,
     signal?: AbortSignal,
+    options: { requireApiKey?: boolean } = {},
   ): Promise<{ body: unknown; headers: Record<string, string> }> {
     const { apiKey, instToken } = this.config;
-    if (!apiKey) {
+    if (!apiKey && options.requireApiKey !== false) {
       throw new ScopusError(
         'MISSING_API_KEY',
         'Set ELSEVIER_API_KEY in the MCP server environment.',
@@ -43,8 +44,10 @@ export class ScopusClient {
     }
     const headers = new Headers({
       Accept: 'application/json',
-      'X-ELS-APIKey': apiKey,
     });
+    if (apiKey) {
+      headers.set('X-ELS-APIKey', apiKey);
+    }
     if (instToken) {
       headers.set('X-ELS-Insttoken', instToken);
     }
@@ -87,7 +90,7 @@ export class ScopusClient {
       }
       if (!response.ok) {
         throw apiError(response.status, body, metadata, [
-          apiKey,
+          apiKey ?? '',
           instToken ?? '',
         ]);
       }

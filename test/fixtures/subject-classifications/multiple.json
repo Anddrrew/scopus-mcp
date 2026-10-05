@@ -1,0 +1,9 @@
+{
+  "subject-classifications": {
+    "subject-classification": [
+      { "code": "1106", "detail": "Food Science", "abbrev": "AGRI" },
+      { "code": "1107", "detail": "Forestry", "abbrev": "AGRI" }
+    ],
+    "future-field": null
+  }
+}

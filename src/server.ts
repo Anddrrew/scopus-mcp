@@ -9,6 +9,7 @@ import { registerAuthorSearch } from './tools/author-search/tool';
 import { registerCitationOverview } from './tools/citation-overview/tool';
 import { registerPlumxMetrics } from './tools/plumx-metrics/tool';
 import { registerScopusSearch } from './tools/scopus-search/tool';
+import { registerSubjectClassifications } from './tools/subject-classifications/tool';
 
 const metadata = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
@@ -28,5 +29,6 @@ export function createServer(
   registerAffiliationRetrieval(server, client);
   registerPlumxMetrics(server, client);
   registerCitationOverview(server, client);
+  registerSubjectClassifications(server, client);
   return server;
 }

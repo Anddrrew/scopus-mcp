@@ -1,0 +1,11 @@
+{
+  "subject-classifications": {
+    "subject-classification": {
+      "code": "1106",
+      "description": "Agricultural and Biological Sciences",
+      "detail": "Food Science",
+      "abbrev": "AGRI",
+      "future-field": { "nested": [1, "2", null] }
+    }
+  }
+}
