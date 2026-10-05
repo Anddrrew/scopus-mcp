@@ -3,6 +3,6 @@
     "opensearch:totalResults": "0",
     "opensearch:startIndex": "0",
     "opensearch:itemsPerPage": "0",
-    "entry": [{"error": "Result set was empty"}]
+    "entry": [{ "error": "Result set was empty" }]
   }
 }

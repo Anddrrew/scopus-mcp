@@ -18,10 +18,12 @@ const statusSchema = z.object({
 });
 const errorBodySchema = z.object({
   'service-error': z.object({ status: statusSchema }).optional(),
-  'error-response': z.object({
-    errorCode: z.string().optional(),
-    errorMessage: z.string().optional(),
-  }).optional(),
+  'error-response': z
+    .object({
+      errorCode: z.string().optional(),
+      errorMessage: z.string().optional(),
+    })
+    .optional(),
 });
 
 export function apiError(
@@ -42,13 +44,20 @@ export function apiError(
   };
   const redact = (value: string): string => {
     for (const secret of secrets.filter(Boolean)) {
-      value = value.replaceAll(secret, '[REDACTED]').replaceAll(encodeURIComponent(secret), '[REDACTED]');
+      value = value
+        .replaceAll(secret, '[REDACTED]')
+        .replaceAll(encodeURIComponent(secret), '[REDACTED]');
     }
     return value.slice(0, 1000);
   };
   return new ScopusError(
     redact(service?.statusCode ?? gateway?.errorCode ?? `HTTP_${status}`),
-    redact(service?.statusText ?? gateway?.errorMessage ?? messages[status] ?? `Scopus request failed (HTTP ${status}).`),
+    redact(
+      service?.statusText ??
+        gateway?.errorMessage ??
+        messages[status] ??
+        `Scopus request failed (HTTP ${status}).`,
+    ),
     status,
     headers,
   );

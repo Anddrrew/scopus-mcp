@@ -1,14 +1,38 @@
 import js from '@eslint/js';
+import { defineConfig } from 'eslint/config';
+import prettier from 'eslint-config-prettier/flat';
+import jsonc from 'eslint-plugin-jsonc';
 import tseslint from 'typescript-eslint';
 
-export default tseslint.config(
-  { ignores: ['dist/**', 'node_modules/**', '.husky/**'] },
-  js.configs.recommended,
-  tseslint.configs.recommendedTypeChecked,
+export default defineConfig(
   {
-    languageOptions: {
-      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
-    },
-    rules: { 'no-console': ['error', { allow: ['error', 'warn'] }] },
+    ignores: [
+      'dist/**',
+      'coverage/**',
+      'node_modules/**',
+      '.husky/**',
+      'package-lock.json',
+    ],
   },
+  {
+    files: ['**/*.ts'],
+    extends: [js.configs.recommended, tseslint.configs.recommendedTypeChecked],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    linterOptions: { reportUnusedDisableDirectives: 'error' },
+    rules: {
+      'no-console': ['error', { allow: ['error', 'warn'] }],
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
+      '@typescript-eslint/switch-exhaustiveness-check': 'error',
+    },
+  },
+  {
+    files: ['**/*.json'],
+    extends: [jsonc.configs['recommended-with-json']],
+  },
+  prettier,
 );

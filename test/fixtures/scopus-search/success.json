@@ -3,29 +3,54 @@
     "opensearch:totalResults": "2",
     "opensearch:startIndex": "0",
     "opensearch:itemsPerPage": "1",
-    "opensearch:Query": {"@role": "request", "@searchTerms": "TITLE-ABS-KEY(machine learning)", "@startPage": "0"},
-    "cursor": {"@current": "*", "@next": "next+page/token=="},
-    "link": [{"@ref": "next", "@href": "https://api.elsevier.com/content/search/scopus?cursor=next%2Bpage%2Ftoken%3D%3D"}],
-    "entry": [{
-      "@_fa": "true",
-      "dc:identifier": "SCOPUS_ID:10000000001",
-      "eid": "2-s2.0-10000000001",
-      "dc:title": "Synthetic study of machine learning",
-      "dc:creator": "Example, A.",
-      "dc:description": "Synthetic abstract for offline tests.",
-      "prism:doi": "10.0000/scopus-mcp-example",
-      "prism:publicationName": "Example Journal",
-      "prism:coverDate": "2026-01-01",
-      "prism:aggregationType": "Journal",
-      "citedby-count": "0",
-      "openaccess": "1",
-      "openaccessFlag": true,
-      "author": [{"authid": "1000000001", "authname": "Example, A.", "afid": [{"$": "100000001"}]}],
-      "affiliation": [{"afid": "100000001", "affilname": "Example University", "name-variant": [{"$": "Example"}]}],
-      "prism:isbn": [{"$": "0000000000000"}],
-      "future-field": {"nested": [1, "2", null]}
-    }],
-    "facet": [{"@name": "pubyear", "category": [{"@value": "2026", "$": "2"}]}]
+    "opensearch:Query": {
+      "@role": "request",
+      "@searchTerms": "TITLE-ABS-KEY(machine learning)",
+      "@startPage": "0"
+    },
+    "cursor": { "@current": "*", "@next": "next+page/token==" },
+    "link": [
+      {
+        "@ref": "next",
+        "@href": "https://api.elsevier.com/content/search/scopus?cursor=next%2Bpage%2Ftoken%3D%3D"
+      }
+    ],
+    "entry": [
+      {
+        "@_fa": "true",
+        "dc:identifier": "SCOPUS_ID:10000000001",
+        "eid": "2-s2.0-10000000001",
+        "dc:title": "Synthetic study of machine learning",
+        "dc:creator": "Example, A.",
+        "dc:description": "Synthetic abstract for offline tests.",
+        "prism:doi": "10.0000/scopus-mcp-example",
+        "prism:publicationName": "Example Journal",
+        "prism:coverDate": "2026-01-01",
+        "prism:aggregationType": "Journal",
+        "citedby-count": "0",
+        "openaccess": "1",
+        "openaccessFlag": true,
+        "author": [
+          {
+            "authid": "1000000001",
+            "authname": "Example, A.",
+            "afid": [{ "$": "100000001" }]
+          }
+        ],
+        "affiliation": [
+          {
+            "afid": "100000001",
+            "affilname": "Example University",
+            "name-variant": [{ "$": "Example" }]
+          }
+        ],
+        "prism:isbn": [{ "$": "0000000000000" }],
+        "future-field": { "nested": [1, "2", null] }
+      }
+    ],
+    "facet": [
+      { "@name": "pubyear", "category": [{ "@value": "2026", "$": "2" }] }
+    ]
   },
   "future-envelope-field": true
 }

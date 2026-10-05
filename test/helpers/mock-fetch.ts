@@ -1,4 +1,6 @@
-export function mockFetch(reply: Response | ((request: Request) => Response | Promise<Response>)) {
+export function mockFetch(
+  reply: Response | ((request: Request) => Response | Promise<Response>),
+) {
   const requests: Request[] = [];
   const fetchImpl: typeof fetch = async (input, init) => {
     const request = new Request(input, init);

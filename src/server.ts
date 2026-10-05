@@ -8,7 +8,9 @@ const metadata = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
 ) as { name: string; version: string };
 
-export function createServer(client = new ScopusClient(readConfig())): McpServer {
+export function createServer(
+  client = new ScopusClient(readConfig()),
+): McpServer {
   const server = new McpServer(
     { name: metadata.name, version: metadata.version },
     { capabilities: { tools: {} } },

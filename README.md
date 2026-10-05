@@ -19,10 +19,19 @@ The process waits for MCP messages on stdin. Stdout is reserved for the protocol
 write diagnostics to stderr only.
 
 ```sh
-npm run check     # ESLint, typecheck, build, offline tests
+npm run check         # ESLint, Prettier, typecheck, build, offline tests
+npm run lint:fix      # Apply available ESLint fixes
+npm run format        # Format supported files with Prettier
+npm run format:check  # Check formatting without changing files
 npm run build
 npm start
 ```
+
+ESLint checks TypeScript with type information and validates JSON files.
+Prettier handles formatting separately, using two-space indentation, an
+80-character print width, and single quotes in TypeScript. It preserves
+intentionally multiline objects. Generated files and the lockfile are excluded
+from formatting.
 
 Husky installs a pre-push hook during `npm ci` / `npm install`. Every push runs
 `npm run check`. Source, tests, and ESLint configuration use TypeScript.
@@ -72,23 +81,23 @@ returns one page per invocation. Example tool arguments:
 }
 ```
 
-| Parameter | Meaning |
-| --- | --- |
-| `query` | Required native Scopus query string |
-| `view` | `STANDARD` (default), `COMPLETE`, or `COMPONENT` |
-| `count` | Page size, default 25; max 200 for STANDARD or 25 for COMPLETE/COMPONENT |
-| `start` | Zero-based offset; the requested window must fit within 5000 results |
-| `cursor` | Cursor pagination: `*` first, then `search-results.cursor["@next"]`; omit `start` |
-| `date` | Year or range, e.g. `2020-2026` |
-| `sort` | API sort expression, e.g. `-coverDate,+creator` |
-| `field` | Comma-separated response fields; overrides `view` |
-| `subj` | Subject area code, e.g. `COMP` |
-| `facets` | API facet expression, e.g. `pubyear;subjarea(count=10,sort=fd)` |
-| `content` | `all`, `core`, or `dummy` |
-| `alias` | Include superseded author profiles in author-ID searches |
-| `suppressNavLinks` | Suppress top-level navigation links |
-| `reqId` | Request identifier for Elsevier support |
-| `ver` | Resource-version flags such as `new` or `facetexpand` |
+| Parameter          | Meaning                                                                           |
+| ------------------ | --------------------------------------------------------------------------------- |
+| `query`            | Required native Scopus query string                                               |
+| `view`             | `STANDARD` (default), `COMPLETE`, or `COMPONENT`                                  |
+| `count`            | Page size, default 25; max 200 for STANDARD or 25 for COMPLETE/COMPONENT          |
+| `start`            | Zero-based offset; the requested window must fit within 5000 results              |
+| `cursor`           | Cursor pagination: `*` first, then `search-results.cursor["@next"]`; omit `start` |
+| `date`             | Year or range, e.g. `2020-2026`                                                   |
+| `sort`             | API sort expression, e.g. `-coverDate,+creator`                                   |
+| `field`            | Comma-separated response fields; overrides `view`                                 |
+| `subj`             | Subject area code, e.g. `COMP`                                                    |
+| `facets`           | API facet expression, e.g. `pubyear;subjarea(count=10,sort=fd)`                   |
+| `content`          | `all`, `core`, or `dummy`                                                         |
+| `alias`            | Include superseded author profiles in author-ID searches                          |
+| `suppressNavLinks` | Suppress top-level navigation links                                               |
+| `reqId`            | Request identifier for Elsevier support                                           |
+| `ver`              | Resource-version flags such as `new` or `facetexpand`                             |
 
 Keep the same query and options when requesting the next page. Navigation links
 and cursor tokens are preserved as returned by Elsevier; the tool does not
@@ -129,7 +138,7 @@ package-name availability must be checked before release.
 
 ## CI and releases
 
-PRs targeting `main` run ESLint, type checking, build, stdio tests, and npm
+PRs targeting `main` run ESLint, formatting checks, type checking, build, stdio tests, and npm
 packaging checks on the latest available Node 24 release. Develop on `feature/*` or `fix/*` branches.
 
 Releases are tags on `main`; no release branch is needed:
