@@ -1,61 +1,31 @@
 # scopus-mcp
 
-A TypeScript MCP server for the Elsevier Scopus API, using stdio.
+[![npm version](https://img.shields.io/npm/v/scopus-mcp)](https://www.npmjs.com/package/scopus-mcp)
+[![Node.js](https://img.shields.io/node/v/scopus-mcp)](https://nodejs.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Currently implements `scopus_search`: one MCP tool for the Scopus Search API.
-Parameters and JSON responses follow Elsevier's format, including namespaced
-keys such as `dc:title` and string values such as `citedby-count`.
+Connect MCP clients to the Elsevier Scopus API. This TypeScript server runs over
+stdio and exposes API operations as tools, preserving Elsevier's parameter
+names and JSON responses.
 
-## Development
+Each tool invocation makes one API request. Tools declare an `outputSchema`
+and return MCP `structuredContent` with a JSON text fallback.
 
-Requires Node.js >=22.22.0 and npm.
+## Quick start
 
-```sh
-npm ci
-npm run dev
-```
+You need Node.js **22.22.0 or newer**, npm, an MCP client with stdio support,
+and an API key from the [Elsevier Developer Portal](https://dev.elsevier.com/).
+Node.js 24 is used in CI. Available data and views depend on your Elsevier
+subscription and institutional access.
 
-The process waits for MCP messages on stdin. Stdout is reserved for the protocol;
-write diagnostics to stderr only.
-
-```sh
-npm run check         # ESLint, Prettier, typecheck, build, offline tests
-npm run lint:fix      # Apply available ESLint fixes
-npm run format        # Format supported files with Prettier
-npm run format:check  # Check formatting without changing files
-npm run build
-npm start
-```
-
-ESLint checks TypeScript with type information and validates JSON files.
-Prettier handles formatting separately, using two-space indentation, an
-80-character print width, and single quotes in TypeScript. It preserves
-intentionally multiline objects. Generated files and the lockfile are excluded
-from formatting.
-
-Husky installs a pre-push hook during `npm ci` / `npm install`. Every push runs
-`npm run check`. Source, tests, and ESLint configuration use TypeScript.
-
-Code is in `src/`: startup in `index.ts`, tool registration in `server.ts`,
-environment configuration in `config.ts`, shared HTTP code in `scopus/`, and
-tool handlers/schemas in `tools/<tool-name>/`. Tests mirror these areas under
-`test/`, with shared helpers in `test/helpers/` and synthetic Elsevier-shaped
-responses in `test/fixtures/`. Tests make no live Scopus requests and need no key.
-Local TypeScript imports omit file extensions; ESLint enforces this convention.
-`npm run build` checks types, clears `dist`, and uses esbuild to bundle the CLI as
-Node ESM, keeping npm dependencies external. Tests run the source through `tsx`.
-`npm test` builds first; `npm run test:run` uses the existing build.
-
-## Local MCP client configuration
-
-Build first, then configure your MCP client:
+Add this server to your MCP client's configuration:
 
 ```json
 {
   "mcpServers": {
     "scopus": {
-      "command": "node",
-      "args": ["/absolute/path/to/scopus-mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "scopus-mcp"],
       "env": {
         "ELSEVIER_API_KEY": "your-elsevier-api-key"
       }
@@ -64,16 +34,39 @@ Build first, then configure your MCP client:
 }
 ```
 
-Obtain a key from the [Elsevier Developer Portal](https://dev.elsevier.com/).
-Set `ELSEVIER_INST_TOKEN` alongside it if your institution provides one. Both
-credentials are sent in HTTP headers and never accepted as tool arguments.
-The server can start and list tools without a key; a search then returns a
-`MISSING_API_KEY` tool error. Environment files are not loaded automatically.
+The location of this configuration depends on your client. Restart or reload the
+client after saving it. For reproducible deployments, replace `scopus-mcp` in
+`args` with `scopus-mcp@<version>`.
 
-## Scopus Search
+Try asking your client: “Find recent Scopus papers about machine learning.”
 
-`scopus_search` calls `GET https://api.elsevier.com/content/search/scopus` and
-returns one page per invocation. Example tool arguments:
+Running `npx -y scopus-mcp` in a terminal starts the same server. It waits for MCP
+messages on stdin; it does not provide an interactive prompt or an HTTP server.
+
+## Configuration
+
+| Environment variable  | Purpose                                                                      |
+| --------------------- | ---------------------------------------------------------------------------- |
+| `ELSEVIER_API_KEY`    | Required to call API tools. Obtain a key from the Elsevier Developer Portal. |
+| `ELSEVIER_INST_TOKEN` | Optional institutional token, if provided by your institution.               |
+
+Add the institutional token alongside the API key in the client's `env` object
+when needed. Credentials are sent in HTTP headers and are never tool arguments.
+Environment files such as `.env` are not loaded automatically.
+
+The server can start and list tools without credentials. Calling an API tool
+without a key returns `MISSING_API_KEY`.
+
+## Available tools
+
+| Tool            | Description                                                          | Reference                                    |
+| --------------- | -------------------------------------------------------------------- | -------------------------------------------- |
+| `scopus_search` | Search Scopus publications using native query syntax and pagination. | [Scopus Search](docs/tools/scopus-search.md) |
+
+This table describes the checked-out revision. Use the README from your installed
+version's Git tag when working with an older npm release.
+
+For example, call `scopus_search` with:
 
 ```json
 {
@@ -84,119 +77,65 @@ returns one page per invocation. Example tool arguments:
 }
 ```
 
-| Parameter          | Meaning                                                                           |
-| ------------------ | --------------------------------------------------------------------------------- |
-| `query`            | Required native Scopus query string                                               |
-| `view`             | `STANDARD` (default), `COMPLETE`, or `COMPONENT`                                  |
-| `count`            | Page size, default 25; max 200 for STANDARD or 25 for COMPLETE/COMPONENT          |
-| `start`            | Zero-based offset; the requested window must fit within 5000 results              |
-| `cursor`           | Cursor pagination: `*` first, then `search-results.cursor["@next"]`; omit `start` |
-| `date`             | Year or range, e.g. `2020-2026`                                                   |
-| `sort`             | API sort expression, e.g. `-coverDate,+creator`                                   |
-| `field`            | Comma-separated response fields; overrides `view`                                 |
-| `subj`             | Subject area code, e.g. `COMP`                                                    |
-| `facets`           | API facet expression, e.g. `pubyear;subjarea(count=10,sort=fd)`                   |
-| `content`          | `all`, `core`, or `dummy`                                                         |
-| `alias`            | Include superseded author profiles in author-ID searches                          |
-| `suppressNavLinks` | Suppress top-level navigation links                                               |
-| `reqId`            | Request identifier for Elsevier support                                           |
-| `ver`              | Resource-version flags such as `new` or `facetexpand`                             |
+Tools return one response at a time. Use the API's pagination parameters to
+request subsequent pages; the server does not automatically follow links or
+combine results.
 
-Keep the same query and options when requesting the next page. Navigation links
-and cursor tokens are preserved as returned by Elsevier; the tool does not
-automatically fetch additional pages. View/cursor access depends on your API
-key and institutional entitlements. With `field`, Elsevier decides the effective
-view and limit. The tool always requests JSON.
+## Responses and errors
 
-The original `search-results` object is returned in MCP `structuredContent`,
-with an `outputSchema`, and also serialized as text for MCP client compatibility.
-Unknown fields are retained, absent fields stay absent, and numbers represented
-as strings stay strings. Empty result entries (including Elsevier's `error`
-marker for an empty result set) are preserved rather than converted.
+Successful responses preserve the native Elsevier JSON, including namespaced
+keys such as `dc:title`, string counts, `null` values, and unknown fields. Fields
+omitted by the API remain absent. The same JSON is exposed in
+`structuredContent` and serialized in a text content block.
 
-Available `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` and
-`Retry-After` headers are returned separately under MCP `_meta["scopus-mcp/headers"]`.
-Quota headers are optional and their values remain strings.
+Available quota headers are returned separately in
+`_meta["scopus-mcp/headers"]`: `X-RateLimit-Limit`, `X-RateLimit-Remaining`,
+`X-RateLimit-Reset`, and `Retry-After`. Header values remain strings.
 
-HTTP failures return `isError: true` with a text JSON error containing `code`,
-`message`, and HTTP `status` when available. JSON API error messages are retained
-with credentials redacted; non-JSON failures use a message based on HTTP status.
-Requests have a 30-second timeout, support MCP cancellation, and are not retried
-automatically. Missing credentials, timeouts, network failures, and invalid
-upstream JSON have distinct error codes. Invalid arguments are rejected before
-making a request.
+API failures return `isError: true` and a JSON text error with `code`, `message`,
+and `status` when an HTTP status is available. Invalid arguments are rejected
+before an API request. Requests support cancellation, time out after 30 seconds,
+and are not retried automatically.
 
-## npm packaging
+| Problem                      | What to check                                                                                                                  |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `MISSING_API_KEY`            | Set `ELSEVIER_API_KEY` in the MCP server's environment.                                                                        |
+| HTTP 401 or 403              | Check your key, subscription, institutional network, and institutional token. A key alone does not grant access to every view. |
+| HTTP 429                     | Inspect quota headers and `Retry-After` before retrying.                                                                       |
+| `TIMEOUT` or `NETWORK_ERROR` | Check connectivity to `api.elsevier.com`, then retry if appropriate.                                                           |
+| `INVALID_RESPONSE`           | The upstream response was not valid JSON or did not match the tool's expected response shape.                                  |
+
+Elsevier error messages are retained with credentials redacted. Non-JSON HTTP
+errors use a status-based message. Stdout is reserved for MCP messages;
+diagnostics go to stderr.
+
+## Development and contributing
 
 ```sh
-npm pack
+git clone https://github.com/Anddrrew/scopus-mcp.git
+cd scopus-mcp
+npm ci
+npm run check
 ```
 
-The prepack script checks types and builds the CLI. The package includes the bundled CLI,
-README, and license. It exposes the `scopus-mcp` executable.
+Tests run offline with synthetic API responses and do not require an API key.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the project layout, local MCP setup,
+and guidelines for adding tools. Bug reports and focused pull requests are
+welcome through [GitHub](https://github.com/Anddrrew/scopus-mcp/issues).
 
-Launch the npm package over stdio with `npx -y scopus-mcp`. In an MCP client,
-set `command` to `npx`, `args` to `["-y", "scopus-mcp"]`, and supply the same
-Elsevier environment variables shown above.
-
-## CI and releases
-
-PRs targeting `main` run ESLint, formatting checks, type checking, build, stdio tests, and npm
-packaging checks on the latest available Node 24 release. Develop on `feature/*` or `fix/*` branches.
-
-Releases are tags on `main`. Version changes go through a short-lived release PR,
-so the workflow works with a protected `main` that requires pull requests:
-
-1. Merge the changes you want to release into `main`.
-2. In GitHub Actions, select **Release → Run workflow**, choose `main`, and select
-   `patch` (default), `minor`, or `major`. For example, from `0.1.0` these produce
-   `0.1.1`, `0.2.0`, and `1.0.0` respectively.
-3. Leave **dry_run** enabled to validate the next version and archive without
-   changing the repository or publishing. This does not verify npm publish access.
-4. Run with **dry_run** disabled to open a `release/v<version>` PR updating
-   `package.json` and `package-lock.json`. If a release PR is already open, the
-   workflow links to it instead of preparing another one.
-5. On the release PR, select **Approve workflows to run** if GitHub requests it,
-   then merge after CI passes. Merging starts the **Release** workflow again,
-   which checks and builds the merge commit, pushes its version tag, publishes to
-   npm `latest`, and creates the GitHub release.
-
-In GitHub **Settings → Actions → General → Workflow permissions**, enable
-**Allow GitHub Actions to create and approve pull requests**. The default token
-permissions can remain read-only: this workflow requests the specific write
-permissions it needs. It creates PRs but does not approve or merge them.
-PR checks started by `GITHUB_TOKEN` require a maintainer's approval to run.
-See [GitHub's token event rules](https://docs.github.com/en/actions/concepts/security/github_token).
-
-The workflow never pushes directly to `main`. It publishes only merged release
-PRs from this repository whose branch name matches the package version. A merge
-of an ordinary PR, an unmerged closed PR, or a fork PR does not publish anything.
-Publication uses the release PR's merge commit even if `main` advances afterward.
-
-Publishing uses [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/)
-(OIDC). Configure the npm package's trusted publisher: owner `Anddrrew`,
-repository `scopus-mcp`, workflow `release.yml`, no environment, with direct
-publishing allowed. No npm token is stored in this repository.
-
-Only stable versions are accepted. If publication fails, fix the cause and rerun
-the failed **Release** run for the merged PR. The workflow reuses a tag only when
-it points to the same merge commit, and skips npm publication only when the
-registry already contains the exact archive. It also preserves an existing
-GitHub release. Do not start another version bump to retry publication.
-
-After changing this workflow, start a new manual run from the updated `main`;
-rerunning an older failed run still uses the old workflow revision.
+Maintainers can find publishing and versioning instructions in the
+[release guide](docs/releases.md).
 
 ## API documentation
 
 - [Scopus API specification](https://dev.elsevier.com/sc_api_spec.html)
-- [Interactive Scopus APIs](https://dev.elsevier.com/scopus.html)
-- [Scopus Search parameters](https://dev.elsevier.com/documentation/SCOPUSSearchAPI.wadl)
-- [Scopus Search response views](https://dev.elsevier.com/sc_search_views.html)
+- [Interactive API documentation](https://dev.elsevier.com/scopus.html)
 - [API limits and quota headers](https://dev.elsevier.com/api_key_settings.html)
 
 ## License
 
-MIT © 2026 Andrii Baran. The license covers this project's code. Access to Elsevier
-APIs and use of Scopus data remain subject to Elsevier's terms. This is an
-independent project, not an official Elsevier product.
+[MIT](LICENSE) © 2026 Andrii Baran.
+
+This is an independent project and is not affiliated with or endorsed by Elsevier.
+The MIT license covers this project's code. Access to Elsevier APIs and use of
+Scopus data are governed by Elsevier's terms.
