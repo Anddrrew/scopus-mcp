@@ -23,10 +23,11 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
-    "test": "npm run build && tsx --test test/*.test.ts",
+    "test": "npm run build && npm run test:run",
     "check": "npm run lint && npm run typecheck && npm test",
     "prepare": "husky",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "test:run": "tsx --test test/*.test.ts"
   },
   "keywords": [
     "scopus",
