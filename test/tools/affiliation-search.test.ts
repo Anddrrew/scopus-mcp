@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test, type TestContext } from 'node:test';
 import { Client } from '@modelcontextprotocol/client';
 import { InMemoryTransport } from '@modelcontextprotocol/server';
@@ -7,13 +8,24 @@ import { ScopusClient } from '../../src/scopus/client';
 import {
   inputSchema,
   outputSchema,
-} from '../../src/tools/scopus-search/schemas';
-import { searchFixture } from '../helpers/fixtures';
+} from '../../src/tools/affiliation-search/schemas';
 import { mockFetch } from '../helpers/mock-fetch';
+
+function fixture(name: string): unknown {
+  return JSON.parse(
+    readFileSync(
+      new URL(`../fixtures/affiliation-search/${name}.json`, import.meta.url),
+      'utf8',
+    ),
+  ) as unknown;
+}
 
 async function connect(t: TestContext, upstream: ScopusClient) {
   const server = createServer(upstream);
-  const client = new Client({ name: 'scopus-test', version: '1.0.0' });
+  const client = new Client({
+    name: 'affiliation-search-test',
+    version: '1.0.0',
+  });
   const [clientTransport, serverTransport] =
     InMemoryTransport.createLinkedPair();
   t.after(async () => {
@@ -25,14 +37,14 @@ async function connect(t: TestContext, upstream: ScopusClient) {
   return client;
 }
 
-await test('MCP advertises the native input/output schemas and read-only annotation', async (t) => {
+await test('affiliation search advertises native schemas and read-only annotations', async (t) => {
   const mock = mockFetch(Response.json({}));
   const client = await connect(t, new ScopusClient({}, mock.fetch));
   const { tools } = await client.listTools();
-  const tool = tools.find((tool) => tool.name === 'scopus_search');
+  const tool = tools.find((entry) => entry.name === 'affiliation_search');
   assert.ok(tool);
-  assert.equal(tool.name, 'scopus_search');
   assert.equal(tool.annotations?.readOnlyHint, true);
+  assert.equal(tool.annotations?.destructiveHint, false);
   assert.ok(tool.inputSchema.properties?.query);
   assert.ok(
     tool.outputSchema?.properties &&
@@ -43,18 +55,21 @@ await test('MCP advertises the native input/output schemas and read-only annotat
 });
 
 for (const name of ['success', 'empty']) {
-  await test(`MCP preserves the ${name} payload, including unknown fields and string numbers`, async (t) => {
-    const payload = searchFixture(name);
+  await test(`affiliation search preserves the ${name} response and makes one JSON request`, async (t) => {
+    const payload = fixture(name);
     const mock = mockFetch(
-      Response.json(payload, { headers: { 'X-RateLimit-Remaining': '123' } }),
+      Response.json(payload, { headers: { 'X-RateLimit-Remaining': '12' } }),
     );
     const client = await connect(
       t,
-      new ScopusClient({ apiKey: 'test' }, mock.fetch),
+      new ScopusClient(
+        { apiKey: 'test-key', instToken: 'test-token' },
+        mock.fetch,
+      ),
     );
     const result = await client.callTool({
-      name: 'scopus_search',
-      arguments: { query: 'TITLE-ABS-KEY(machine learning)', cursor: '*' },
+      name: 'affiliation_search',
+      arguments: { query: 'AFFIL(university)' },
     });
     assert.notEqual(result.isError, true);
     assert.deepEqual(result.structuredContent, payload);
@@ -63,81 +78,50 @@ for (const name of ['success', 'empty']) {
     assert.ok(text?.type === 'text');
     assert.deepEqual(JSON.parse(text.text) as unknown, payload);
     assert.deepEqual(result._meta?.['scopus-mcp/headers'], {
-      'X-RateLimit-Remaining': '123',
+      'X-RateLimit-Remaining': '12',
     });
     assert.ok(outputSchema.safeParse(result.structuredContent).success);
     assert.equal(mock.requests.length, 1);
-    const params = new URL(mock.requests[0]?.url ?? '').searchParams;
-    assert.equal(params.get('view'), 'STANDARD');
-    assert.equal(params.get('count'), '25');
-    assert.equal(params.get('cursor'), '*');
-    assert.equal(params.has('start'), false);
+    const request = mock.requests[0];
+    assert.ok(request);
+    assert.equal(request.headers.get('Accept'), 'application/json');
+    assert.equal(request.headers.get('X-ELS-APIKey'), 'test-key');
+    assert.equal(request.headers.get('X-ELS-Insttoken'), 'test-token');
+    const url = new URL(request.url);
+    assert.equal(url.pathname, '/content/search/affiliation');
+    assert.equal(url.searchParams.get('view'), 'STANDARD');
+    assert.equal(url.searchParams.get('count'), '25');
+    assert.equal(url.searchParams.has('start'), false);
   });
 }
 
-await test('MCP preserves array cover dates alongside text, null and missing dates', async (t) => {
-  const payload = {
-    'search-results': {
-      'opensearch:totalResults': '4',
-      entry: [
-        {
-          'dc:title': 'Array dates',
-          'prism:coverDate': [
-            { $: '2007-01-01', 'future-field': { nested: [1, '2', null] } },
-            { $: '2007-02-01' },
-          ],
-        },
-        { 'dc:title': 'Text date', 'prism:coverDate': '2007-01-01' },
-        { 'dc:title': 'Null date', 'prism:coverDate': null },
-        { 'dc:title': 'Missing date' },
-      ],
-    },
-  };
-  const mock = mockFetch(Response.json(payload));
-  const client = await connect(
-    t,
-    new ScopusClient({ apiKey: 'test' }, mock.fetch),
-  );
-  const result = await client.callTool({
-    name: 'scopus_search',
-    arguments: { query: 'test' },
-  });
-  assert.notEqual(result.isError, true);
-  assert.deepEqual(result.structuredContent, payload);
-  assert.equal(result.content.length, 1);
-  const text = result.content[0];
-  assert.ok(text?.type === 'text');
-  assert.deepEqual(JSON.parse(text.text) as unknown, payload);
-  assert.equal(mock.requests.length, 1);
-});
-
-await test('all supported API parameters are forwarded with their original names', async (t) => {
+await test('affiliation search forwards every native parameter and query characters', async (t) => {
   const mock = mockFetch(Response.json({ 'search-results': { entry: [] } }));
   const client = await connect(
     t,
     new ScopusClient({ apiKey: 'test' }, mock.fetch),
   );
   const input = {
-    query: 'AU-ID(1000000001)',
-    view: 'COMPLETE',
+    query: 'AFFIL(Київ) OR AFFIL(A&B)',
+    view: 'STANDARD',
     count: 10,
-    start: 0,
-    date: '2020-2026',
-    sort: '-coverDate,+creator',
-    field: 'identifier,title',
-    subj: 'COMP',
-    facets: 'pubyear;subjarea(count=10,sort=fd)',
-    content: 'core',
-    alias: false,
+    start: 20,
+    field: 'identifier,affiliation-name',
+    sort: '-document-count,+affiliation-name',
+    facets: 'affilcountry(count=10,sort=fd);affilcity',
     suppressNavLinks: true,
-    reqId: 'test-request',
+    reqId: 'affiliation-search-request',
     ver: 'new,facetexpand',
   };
   const result = await client.callTool({
-    name: 'scopus_search',
+    name: 'affiliation_search',
     arguments: input,
   });
   assert.notEqual(result.isError, true);
+  assert.deepEqual(result.structuredContent, {
+    'search-results': { entry: [] },
+  });
+  assert.equal(mock.requests.length, 1);
   const params = new URL(mock.requests[0]?.url ?? '').searchParams;
   assert.deepEqual(
     Object.fromEntries(params),
@@ -147,10 +131,25 @@ await test('all supported API parameters are forwarded with their original names
   );
 });
 
-await test('field-selected and partial responses do not acquire missing fields', async (t) => {
+await test('affiliation field selections retain missing fields, nulls and unknown nested data', async (t) => {
   const payload = {
     'search-results': {
-      entry: [{ 'dc:title': 'Only a title', 'prism:doi': null }],
+      entry: [
+        {
+          'dc:identifier': 'AFFILIATION_ID:1',
+          'name-variant': null,
+          'parent-affiliation-id': null,
+          city: null,
+          country: null,
+        },
+        {
+          'name-variant': [
+            { $: 'Example University', future: { nested: [null] } },
+          ],
+          'affiliation-name': 'Example University',
+        },
+        {},
+      ],
     },
   };
   const mock = mockFetch(Response.json(payload));
@@ -159,11 +158,15 @@ await test('field-selected and partial responses do not acquire missing fields',
     new ScopusClient({ apiKey: 'test' }, mock.fetch),
   );
   const result = await client.callTool({
-    name: 'scopus_search',
-    arguments: { query: 'test', field: 'title' },
+    name: 'affiliation_search',
+    arguments: { query: 'test', field: 'identifier' },
   });
   assert.notEqual(result.isError, true);
   assert.deepEqual(result.structuredContent, payload);
+  assert.equal(result.content.length, 1);
+  const text = result.content[0];
+  assert.ok(text?.type === 'text');
+  assert.deepEqual(JSON.parse(text.text) as unknown, payload);
 });
 
 for (const input of [
@@ -174,27 +177,29 @@ for (const input of [
   { query: 'test', count: 201 },
   { query: 'test', count: 1.5 },
   { query: 'test', start: -1 },
-  { query: 'test', view: 'UNKNOWN' },
-  { query: 'test', view: 'COMPLETE', count: 26 },
-  { query: 'test', view: 'COMPONENT', count: 26 },
-  { query: 'test', cursor: '*', start: 0 },
   { query: 'test', start: 4999, count: 2 },
-  { query: 'test', apiKey: 'do-not-accept' },
+  { query: 'test', view: 'COMPLETE' },
+  { query: 'test', cursor: '*' },
+  { query: 'test', apiKey: 'forbidden' },
+  { query: 'test', field: ' ' },
+  { query: 'test', 'co-author': '1' },
+  { query: 'test', alias: false },
 ]) {
-  await test(`invalid input is rejected before HTTP: ${JSON.stringify(input)}`, async (t) => {
+  await test(`affiliation search rejects invalid input before HTTP: ${JSON.stringify(input)}`, async (t) => {
     const mock = mockFetch(Response.json({}));
     const client = await connect(
       t,
       new ScopusClient({ apiKey: 'test' }, mock.fetch),
     );
-    // SDK validation may report a protocol error or an isError tool result, depending on the negotiated revision.
     let rejected: boolean;
     try {
-      const result = await client.callTool({
-        name: 'scopus_search',
-        arguments: input,
-      });
-      rejected = result.isError === true;
+      rejected =
+        (
+          await client.callTool({
+            name: 'affiliation_search',
+            arguments: input,
+          })
+        ).isError === true;
     } catch {
       rejected = true;
     }
@@ -203,30 +208,37 @@ for (const input of [
   });
 }
 
-await test('pagination bounds and field overrides do not reject valid requests', () => {
+await test('affiliation search accepts exact pagination boundaries', () => {
   for (const args of [
-    { query: 'test', start: 4800, count: 200 },
     { query: 'test', count: 0 },
-    { query: 'test', cursor: 'next+/==', count: 200 },
-    { query: 'test', view: 'COMPLETE', count: 25 },
-    { query: 'test', view: 'COMPONENT', count: 25 },
-    { query: 'test', view: 'COMPLETE', field: 'title', count: 100 },
+    { query: 'test', start: 4800, count: 200 },
+    { query: 'test', start: 4975 },
   ]) {
     assert.ok(inputSchema.safeParse(args).success);
   }
 });
 
-await test('upstream failures are MCP tool errors, not successful search payloads', async (t) => {
+await test('affiliation upstream failures preserve the common error and quota contract', async (t) => {
   const mock = mockFetch(
-    Response.json(searchFixture('error'), { status: 400 }),
+    Response.json(
+      {
+        'service-error': {
+          status: {
+            statusCode: 'QUOTA_EXCEEDED',
+            statusText: 'Quota exceeded',
+          },
+        },
+      },
+      { status: 429, headers: { 'Retry-After': '60' } },
+    ),
   );
   const client = await connect(
     t,
     new ScopusClient({ apiKey: 'test' }, mock.fetch),
   );
   const result = await client.callTool({
-    name: 'scopus_search',
-    arguments: { query: 'invalid(' },
+    name: 'affiliation_search',
+    arguments: { query: 'test' },
   });
   assert.equal(result.isError, true);
   assert.equal(result.structuredContent, undefined);
@@ -234,22 +246,25 @@ await test('upstream failures are MCP tool errors, not successful search payload
     {
       type: 'text',
       text: JSON.stringify({
-        code: 'INVALID_INPUT',
-        message: 'Error translating query',
-        status: 400,
+        code: 'QUOTA_EXCEEDED',
+        message: 'Quota exceeded',
+        status: 429,
       }),
     },
   ]);
+  assert.deepEqual(result._meta?.['scopus-mcp/headers'], {
+    'Retry-After': '60',
+  });
 });
 
-await test('HTTP 200 with a wrong payload fails output validation', async (t) => {
+await test('affiliation search rejects an unexpected successful response', async (t) => {
   const mock = mockFetch(Response.json({ unexpected: true }));
   const client = await connect(
     t,
     new ScopusClient({ apiKey: 'test' }, mock.fetch),
   );
   const result = await client.callTool({
-    name: 'scopus_search',
+    name: 'affiliation_search',
     arguments: { query: 'test' },
   });
   assert.equal(result.isError, true);

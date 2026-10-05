@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { McpServer } from '@modelcontextprotocol/server';
 import { readConfig } from './config';
 import { ScopusClient } from './scopus/client';
+import { registerAffiliationSearch } from './tools/affiliation-search/tool';
 import { registerScopusSearch } from './tools/scopus-search/tool';
 
 const metadata = JSON.parse(
@@ -16,5 +17,6 @@ export function createServer(
     { capabilities: { tools: {} } },
   );
   registerScopusSearch(server, client);
+  registerAffiliationSearch(server, client);
   return server;
 }
