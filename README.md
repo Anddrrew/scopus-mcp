@@ -57,7 +57,7 @@ package-name availability must be checked before release.
 ## CI and releases
 
 PRs targeting `main` run ESLint, type checking, build, stdio tests, and npm
-packaging checks on Node 22.22.0 and 24. Develop on `feature/*` or `fix/*` branches.
+packaging checks on the latest available Node 24 release. Develop on `feature/*` or `fix/*` branches.
 
 Releases are tags on `main`; no release branch is needed:
 

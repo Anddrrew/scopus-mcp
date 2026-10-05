@@ -16,17 +16,15 @@ env:
 
 jobs:
   check:
-    name: Check (Node ${{ matrix.node }})
+    name: Check (Node 24)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    strategy:
-      matrix:
-        node: ['22.22.0', '24']
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: ${{ matrix.node }}
+          node-version: '24'
+          check-latest: true
           cache: npm
       - run: npm ci
       - run: npm run check
