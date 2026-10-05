@@ -27,7 +27,7 @@
     "check": "npm run lint && npm run typecheck && npm test",
     "prepare": "husky",
     "prepack": "npm run build",
-    "test:run": "tsx --test test/*.test.ts"
+    "test:run": "node --import tsx --test test/*.test.ts test/scopus/*.test.ts test/tools/*.test.ts"
   },
   "keywords": [
     "scopus",
@@ -36,7 +36,8 @@
     "elsevier"
   ],
   "dependencies": {
-    "@modelcontextprotocol/server": "^2.3.1"
+    "@modelcontextprotocol/server": "^2.3.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

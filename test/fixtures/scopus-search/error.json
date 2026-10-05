@@ -1,0 +1,5 @@
+{
+  "service-error": {
+    "status": {"statusCode": "INVALID_INPUT", "statusText": "Error translating query"}
+  }
+}
