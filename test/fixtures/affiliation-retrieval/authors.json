@@ -1,0 +1,24 @@
+{
+  "affiliation-retrieval-response": [
+    {
+      "coredata": null,
+      "authors": {
+        "@start": "0",
+        "@count": "1",
+        "@total": "1",
+        "author": [
+          {
+            "dc:identifier": "AUTHOR_ID:1000000001",
+            "preferred-name": {
+              "surname": "Example",
+              "given-name": null
+            },
+            "future-author": true
+          }
+        ]
+      }
+    },
+    {}
+  ],
+  "future-root": null
+}

@@ -1,0 +1,17 @@
+{
+  "affiliation-retrieval-response": {
+    "coredata": {
+      "dc:identifier": "AFFILIATION_ID:60000001",
+      "author-count": "5",
+      "document-count": "12",
+      "future-core": null
+    },
+    "affiliation-name": "Example Institute",
+    "city": "Kyiv",
+    "country": "Ukraine",
+    "institution-profile": {
+      "name-variant": ["Example Institute", null],
+      "future-profile": true
+    }
+  }
+}

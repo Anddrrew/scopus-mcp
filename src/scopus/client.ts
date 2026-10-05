@@ -59,7 +59,7 @@ export class ScopusClient {
         method: 'GET',
         headers,
         signal: requestSignal,
-        redirect: 'error',
+        redirect: 'manual',
       });
       const metadata: Record<string, string> = {};
       for (const name of [

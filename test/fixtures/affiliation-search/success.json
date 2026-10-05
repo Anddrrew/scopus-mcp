@@ -1,0 +1,49 @@
+{
+  "search-results": {
+    "opensearch:totalResults": "1",
+    "opensearch:startIndex": "0",
+    "opensearch:itemsPerPage": "25",
+    "opensearch:Query": {
+      "@role": "request",
+      "@searchTerms": "AFFIL(university)",
+      "@startPage": "0"
+    },
+    "link": [
+      {
+        "@ref": "next",
+        "@href": "https://api.elsevier.com/content/search/affiliation?start=25"
+      }
+    ],
+    "entry": [
+      {
+        "@_fa": "true",
+        "dc:identifier": "AFFILIATION_ID:600000001",
+        "prism:url": "https://api.elsevier.com/content/affiliation/affiliation_id/600000001",
+        "eid": "10-s2.0-600000001",
+        "parent-affiliation-id": null,
+        "affiliation-name": "Example University",
+        "name-variant": [
+          {
+            "$": "Example University",
+            "@_fa": "true",
+            "future-variant": null
+          }
+        ],
+        "city": null,
+        "country": "Ukraine",
+        "document-count": "12",
+        "link": [
+          {
+            "@ref": "self",
+            "@href": "https://api.elsevier.com/content/affiliation/affiliation_id/600000001"
+          }
+        ],
+        "future-entry": {
+          "nested": [1, "2", null]
+        }
+      }
+    ],
+    "future-search": true
+  },
+  "future-root": null
+}
