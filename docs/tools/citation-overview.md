@@ -1,9 +1,7 @@
 # Citation Overview
 
-`citation_overview` retrieves citation counts by year and citation summaries with
-one GET request to `/content/abstract/citations`. It preserves Elsevier's
-`abstract-citations-response` JSON, including native nested matrix fields and
-string counts.
+`citation_overview` retrieves yearly citation counts and summaries for specified
+publications via `GET /content/abstract/citations`.
 
 ```json
 {
@@ -13,39 +11,36 @@ string counts.
 }
 ```
 
-The identifiers above are illustrative. Supply exactly one of `scopus_id`,
-`doi`, `pii`, or `pubmed_id`; each accepts a comma-separated list. The endpoint
-handles multiple documents in the same request.
+## Parameters
 
-| Parameter   | Type    | Description                                                                                  |
-| ----------- | ------- | -------------------------------------------------------------------------------------------- |
-| `scopus_id` | string  | One or more Scopus document IDs.                                                             |
-| `doi`       | string  | One or more DOIs.                                                                            |
-| `pii`       | string  | One or more publication item identifiers.                                                    |
-| `pubmed_id` | string  | One or more PubMed IDs.                                                                      |
-| `author_id` | string  | Comma-separated author IDs whose citations should be excluded; ignored with `exclude-books`. |
-| `date`      | string  | Year or range, such as `2024` or `2020-2025`.                                                |
-| `citation`  | string  | `exclude-self` or `exclude-books`; Elsevier otherwise includes all citations.                |
-| `view`      | string  | `STANDARD`, the only documented view.                                                        |
-| `start`     | integer | Nonnegative result offset; API default is zero.                                              |
-| `count`     | integer | Nonnegative requested result limit; defaults and maximum depend on service level.            |
-| `field`     | string  | Comma-separated response fields.                                                             |
-| `sort`      | string  | `sort-year` or `rowTotal`, optionally prefixed with `+` or `-`. One field only.              |
-| `reqId`     | string  | Caller-supplied request identifier.                                                          |
-| `ver`       | string  | Requested resource version.                                                                  |
+Supply exactly one of `scopus_id`, `doi`, `pii`, or `pubmed_id`. Each accepts
+a comma-separated string of identifiers. All other parameters are optional.
 
-Optional parameters are passed only when supplied. Pagination is explicit; one
-invocation never fetches additional pages. The output schema describes the native
-identifier legend, document citation matrix, and column totals while allowing
-unknown fields, partial field selections, and null values. No totals are
-recalculated and singleton objects are not converted to arrays.
+| Parameter   | Description                                                                                  |
+| ----------- | -------------------------------------------------------------------------------------------- |
+| `scopus_id` | Scopus document IDs.                                                                         |
+| `doi`       | DOIs.                                                                                        |
+| `pii`       | Publication item identifiers.                                                                |
+| `pubmed_id` | PubMed IDs.                                                                                  |
+| `author_id` | Comma-separated author IDs whose citations should be excluded; ignored with `exclude-books`. |
+| `date`      | Year or range, such as `2024` or `2020-2025`.                                                |
+| `citation`  | `exclude-self` or `exclude-books`; otherwise includes all citations.                         |
+| `view`      | `STANDARD`.                                                                                  |
+| `start`     | Nonnegative integer result offset; defaults to zero.                                         |
+| `count`     | Nonnegative integer result limit; default and maximum depend on service level.               |
+| `field`     | Comma-separated response fields.                                                             |
+| `sort`      | One field: `sort-year` or `rowTotal`, optionally prefixed with `+` or `-`.                   |
+| `reqId`     | Caller-supplied request identifier.                                                          |
+| `ver`       | Requested resource version.                                                                  |
 
-Citation Overview is access-controlled: Elsevier must enable it for your API key.
-A Scopus subscription alone may not grant this permission. Errors and quota
-headers follow the [common response contract](../../README.md#responses-and-errors).
+## Notes
 
-References:
+Elsevier must enable Citation Overview for your API key. A Scopus subscription
+alone may not grant this permission.
 
-- [Citation Overview API parameters](https://dev.elsevier.com/documentation/AbstractCitationAPI.wadl)
-- [Official JSON example](https://dev.elsevier.com/payloads/metadata/abstractCitationResp.json)
-- [Scopus API guide](https://dev.elsevier.com/guides/Scopus%20API%20Guide_V1_20230907.pdf) (access on page 9, overview on pages 31–32, identifiers on pages 50–52)
+## API reference
+
+- [Parameters](https://dev.elsevier.com/documentation/AbstractCitationAPI.wadl)
+- [JSON example](https://dev.elsevier.com/payloads/metadata/abstractCitationResp.json)
+- [Scopus API guide](https://dev.elsevier.com/guides/Scopus%20API%20Guide_V1_20230907.pdf)
+- [Responses and errors](../../README.md#responses-and-errors)

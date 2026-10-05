@@ -1,58 +1,63 @@
 # Releases
 
-PRs targeting `main` run ESLint, formatting checks, type checking, build, stdio tests, and npm
-packaging checks on the latest available Node 24 release. Develop on `feature/*` or `fix/*` branches.
+Releases are tags on `main`, published to npm as `latest`. The
+[Release workflow](../.github/workflows/release.yml) prepares a version PR;
+merging that PR triggers publication.
 
-Releases are tags on `main`. Version changes go through a short-lived release PR,
-so the workflow works with a protected `main` that requires pull requests:
-
-1. Merge the changes you want to release into `main`.
-2. In GitHub Actions, select **Release → Run workflow**, choose `main`, and select
-   `patch` (default), `minor`, or `major`. For example, from `0.1.0` these produce
-   `0.1.1`, `0.2.0`, and `1.0.0` respectively.
-3. Leave **dry_run** enabled to validate the next version and archive without
-   changing the repository or publishing. This does not verify npm publish access.
-4. Run with **dry_run** disabled to open a `release/v<version>` PR updating
-   `package.json` and `package-lock.json`. If a release PR is already open, the
-   workflow links to it instead of preparing another one.
-5. On the release PR, select **Approve workflows to run** if GitHub requests it,
-   then merge after CI passes. Merging starts the **Release** workflow again,
-   which checks and builds the merge commit, pushes its version tag, publishes to
-   npm `latest`, and creates the GitHub release.
+## Setup
 
 In GitHub **Settings → Actions → General → Workflow permissions**, enable
-**Allow GitHub Actions to create and approve pull requests**. The default token
-permissions can remain read-only: this workflow requests the specific write
-permissions it needs. It creates PRs but does not approve or merge them.
-PR checks started by `GITHUB_TOKEN` require a maintainer's approval to run.
-See [GitHub's token event rules](https://docs.github.com/en/actions/concepts/security/github_token).
+**Allow GitHub Actions to create and approve pull requests**. Default token
+permissions can remain read-only; the workflow requests the permissions it needs.
 
-The workflow never pushes directly to `main`. It publishes only merged release
-PRs from this repository whose branch name matches the package version. A merge
-of an ordinary PR, an unmerged closed PR, or a fork PR does not publish anything.
-Publication uses the release PR's merge commit even if `main` advances afterward.
+In the npm package settings, add a GitHub Actions
+[trusted publisher](https://docs.npmjs.com/trusted-publishers/):
 
-Publishing uses [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/)
-(OIDC). Configure the npm package's trusted publisher: owner `Anddrrew`,
-repository `scopus-mcp`, workflow `release.yml`, no environment, with direct
-publishing allowed. No npm token is stored in this repository.
+| Field                | Value                                      |
+| -------------------- | ------------------------------------------ |
+| Organization or user | `Anddrrew`                                 |
+| Repository           | `scopus-mcp`                               |
+| Workflow filename    | `release.yml`                              |
+| Environment          | Leave empty                                |
+| Allowed actions      | Allow direct publishing with `npm publish` |
 
-Only stable versions are accepted. If publication fails, fix the cause and rerun
-the failed **Release** run for the merged PR. The workflow reuses a tag only when
-it points to the same merge commit, and skips npm publication only when the
-registry already contains the exact archive. It also preserves an existing
-GitHub release. Do not start another version bump to retry publication.
+Publishing uses OIDC; no npm token is needed in the repository.
 
-After changing this workflow, start a new manual run from the updated `main`;
-rerunning an older failed run still uses the old workflow revision.
+## Publish a version
 
-## Inspect the package locally
+1. Merge the changes to release into `main`.
+2. In GitHub Actions, select **Release → Run workflow** on `main`. Choose
+   `patch` (default), `minor`, or `major`.
+3. Leave **dry_run** enabled to check the next version and package without
+   publishing. This checks the build, not npm publish access.
+4. Run again with **dry_run** disabled. The workflow opens a
+   `release/v<version>` PR updating `package.json` and `package-lock.json`,
+   or links to an existing release PR.
+5. Select **Approve workflows to run** on the release PR if prompted, then merge
+   after CI passes. GitHub requires this approval for
+   [PRs created with `GITHUB_TOKEN`](https://docs.github.com/en/actions/concepts/security/github_token).
+
+The workflow builds the release PR's merge commit, creates `v<version>`,
+publishes to npm, and creates a GitHub release. It uses that commit even if
+`main` has since advanced. Only merged `release/v<version>` PRs from this
+repository trigger publication; the branch and package versions must match.
+Versions use stable `major.minor.patch` numbers.
+
+Use a fresh manual run for each new release; reruns use the original workflow
+revision.
+
+## Retry a failed release
+
+Fix the cause and rerun the failed **Release** run for the merged PR. The workflow
+reuses a matching tag, skips an identical npm archive, and preserves an existing
+GitHub release. A conflicting tag or archive stops the run. Retry the same
+version rather than preparing another version bump.
+
+## Inspect the package
 
 ```sh
 npm pack --dry-run
 ```
 
-The prepack script checks types and builds the CLI. The npm package contains
-`dist/`, `README.md`, `LICENSE`, and package metadata, and exposes the
-`scopus-mcp` executable. Publishing is a maintainer operation; contributions
-should not change the package version.
+This checks types, builds the CLI, and lists the package contents: `dist/`,
+`README.md`, `LICENSE`, and package metadata. The executable is `scopus-mcp`.
