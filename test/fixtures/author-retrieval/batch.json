@@ -1,0 +1,19 @@
+{
+  "author-retrieval-response-list": {
+    "author-retrieval-response": [
+      {
+        "@status": "found",
+        "coredata": {
+          "dc:identifier": "AUTHOR_ID:1000000001",
+          "document-count": "12"
+        }
+      },
+      {
+        "@status": "not-found",
+        "coredata": null,
+        "error": "Not found"
+      }
+    ],
+    "future-list": true
+  }
+}
