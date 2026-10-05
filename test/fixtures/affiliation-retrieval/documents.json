@@ -1,0 +1,19 @@
+{
+  "affiliation-retrieval-response": {
+    "coredata": {
+      "dc:identifier": "AFFILIATION_ID:60000001"
+    },
+    "documents": {
+      "@start": "0",
+      "@count": "1",
+      "@total": "2",
+      "document": {
+        "dc:title": "Example document",
+        "prism:doi": null,
+        "future-document": {
+          "values": [1, "2", null]
+        }
+      }
+    }
+  }
+}

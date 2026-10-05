@@ -1,0 +1,41 @@
+{
+  "id_type": "doi",
+  "id_value": "10.1234/synthetic-example",
+  "count_categories": [
+    {
+      "name": "citation",
+      "total": 7,
+      "count_types": [
+        {
+          "name": "CITED_BY_COUNT",
+          "total": 7,
+          "sources": [
+            {
+              "name": "Scopus",
+              "total": 7,
+              "future-field": null
+            },
+            {
+              "name": "CrossRef",
+              "total": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "capture",
+      "total": 0,
+      "count_types": []
+    },
+    {
+      "name": "futureCategory",
+      "total": null,
+      "count_types": null,
+      "future-field": {
+        "values": [1, "2", null]
+      }
+    }
+  ],
+  "future-root": true
+}

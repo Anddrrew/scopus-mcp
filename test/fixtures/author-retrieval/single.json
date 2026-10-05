@@ -1,0 +1,18 @@
+{
+  "author-retrieval-response": {
+    "coredata": {
+      "dc:identifier": "AUTHOR_ID:1000000001",
+      "document-count": "12",
+      "citation-count": "28",
+      "future-core": null
+    },
+    "h-index": "3",
+    "affiliation-current": {
+      "@id": "60000001"
+    },
+    "preferred-name": null,
+    "future-profile": {
+      "mixed": [1, "2", null]
+    }
+  }
+}

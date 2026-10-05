@@ -48,7 +48,7 @@ await test('GET keeps params and response intact, sends credentials only as head
   assert.equal(request.headers.get('Accept'), 'application/json');
   assert.equal(request.headers.get('X-ELS-APIKey'), config.apiKey);
   assert.equal(request.headers.get('X-ELS-Insttoken'), config.instToken);
-  assert.equal(request.redirect, 'error');
+  assert.equal(request.redirect, 'manual');
   for (const [key, value] of Object.entries(params)) {
     assert.equal(
       url.searchParams.get(key),
@@ -195,3 +195,37 @@ await test('cancellation is forwarded without exposing its reason', async () => 
   );
   assert.equal(mock.requests[0]?.signal.aborted, true);
 });
+
+for (const status of [300, 301]) {
+  await test(`HTTP ${status} is retained without following replacement profiles or forwarding credentials`, async () => {
+    const mock = mockFetch((request) => {
+      assert.equal(request.redirect, 'manual');
+      return new Response('<replacement>profile moved</replacement>', {
+        status,
+        headers: {
+          Location: 'https://other.example/profile',
+          'X-RateLimit-Remaining': '7',
+        },
+      });
+    });
+    await assert.rejects(
+      new ScopusClient(config, mock.fetch).get(
+        '/content/author/author_id/1',
+        {},
+      ),
+      (error: unknown) => {
+        assert.ok(error instanceof ScopusError);
+        assert.equal(error.code, `HTTP_${status}`);
+        assert.equal(error.status, status);
+        assert.deepEqual(error.headers, { 'X-RateLimit-Remaining': '7' });
+        assert.equal(error.message.includes('other.example'), false);
+        return true;
+      },
+    );
+    assert.equal(mock.requests.length, 1);
+    assert.equal(
+      new URL(mock.requests[0]?.url ?? '').origin,
+      'https://api.elsevier.com',
+    );
+  });
+}
