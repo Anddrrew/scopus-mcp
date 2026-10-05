@@ -1,6 +1,13 @@
 # Author Retrieval
 
-`author_retrieval` retrieves Scopus author profiles in one API request. Example:
+`author_retrieval` retrieves Scopus author profiles through these endpoints:
+
+- `GET /content/author/author_id/{author_id}`
+- `GET /content/author/eid/{eid}`
+- `GET /content/author/orcid/{orcid}`
+- `GET /content/author` for comma-separated `author_id` or `eid` values
+
+Provide exactly one identifier parameter. For a single profile:
 
 ```json
 {
@@ -9,10 +16,7 @@
 }
 ```
 
-Provide exactly one identifier parameter. A single `author_id`, `eid`, or `orcid`
-uses `GET /content/author/{identifier-name}/{identifier}`. Comma-separated
-`author_id` or `eid` values use `GET /content/author` with the original query
-parameter, returning Elsevier's native batch response:
+For multiple profiles:
 
 ```json
 {
@@ -21,41 +25,35 @@ parameter, returning Elsevier's native batch response:
 }
 ```
 
-| Parameter   | Meaning                                                                                         |
-| ----------- | ----------------------------------------------------------------------------------------------- |
-| `author_id` | One Scopus author ID, or comma-separated IDs                                                    |
-| `eid`       | One author EID, or comma-separated EIDs                                                         |
-| `orcid`     | One ORCID; returns the normal Scopus author profile                                             |
-| `view`      | `BASIC`, `LIGHT` (API default), `STANDARD`, `ENHANCED`, `METRICS`, `DOCUMENTS`, or `ENTITLED`   |
-| `field`     | Comma-separated response fields                                                                 |
-| `alias`     | Single profile only; API default `true`. Set `false` to request the original superseded profile |
-| `startref`  | Single profile only; zero-based offset for related documents                                    |
-| `refcount`  | Single profile only; number of related documents                                                |
-| `reqId`     | Request identifier for Elsevier support                                                         |
-| `ver`       | Resource version                                                                                |
+## Parameters
 
-`DOCUMENTS`, `alias`, `startref`, and `refcount` are unavailable for batch requests.
-The API determines view access and result limits. `BASIC` is included because it
-is documented in the response-view chart, although omitted from the WADL enum.
-The tool always requests `application/json`; ORCID export views and alternative
-ORCID response formats are outside this tool's scope.
+| Parameter   | Description                                                                                   |
+| ----------- | --------------------------------------------------------------------------------------------- |
+| `author_id` | One Scopus author ID, or comma-separated IDs                                                  |
+| `eid`       | One author EID, or comma-separated EIDs                                                       |
+| `orcid`     | One ORCID; returns a Scopus author profile                                                    |
+| `view`      | `BASIC`, `LIGHT` (API default), `STANDARD`, `ENHANCED`, `METRICS`, `DOCUMENTS`, or `ENTITLED` |
+| `field`     | Comma-separated response fields                                                               |
+| `alias`     | Single profile only; API default `true`. Set `false` to request a superseded profile          |
+| `startref`  | Single profile only; nonnegative integer offset for related documents                         |
+| `refcount`  | Single profile only; nonnegative integer number of related documents                          |
+| `reqId`     | Request identifier for Elsevier support                                                       |
+| `ver`       | Resource version                                                                              |
 
-The native `author-retrieval-response` and `author-retrieval-response-list`
-envelopes are retained. Profiles can be objects or arrays; partial profiles,
-nulls, string counts, and additional fields remain unchanged. A batch may contain
-per-profile statuses: inspect them instead of treating HTTP success as proof that
-every requested author was found.
+## Notes
 
-Elsevier can redirect superseded profiles. The shared HTTP client does not
-follow redirects: replacement responses return an HTTP tool error such as
-`HTTP_301` with status `301`, preserving the one-request contract. Use the current
-author identifier, or `alias: false` to request the original profile. No
-replacement profiles or additional pages are fetched automatically.
+Batch requests do not support `DOCUMENTS`, `alias`, `startref`, or `refcount`.
+View access and result limits depend on your API service level.
+
+Batch results use `author-retrieval-response-list`. Inspect each profile's
+`@status`: HTTP success does not mean every requested author was found.
+
+Superseded profiles can return replacement errors such as `HTTP_301`. Redirects
+are not followed. Use the current author identifier, or `alias: false` to request
+the original profile.
 
 ## API reference
 
 - [Parameters and endpoints](https://dev.elsevier.com/documentation/AuthorRetrievalAPI.wadl)
 - [Response views](https://dev.elsevier.com/sc_author_retrieval_views.html)
-
-See the [README](../../README.md#responses-and-errors) for the shared response
-and error contract.
+- [Responses and errors](../../README.md#responses-and-errors)

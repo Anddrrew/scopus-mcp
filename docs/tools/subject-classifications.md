@@ -1,12 +1,7 @@
 # Subject Classifications
 
-`subject_classifications` calls
-`GET https://api.elsevier.com/content/subject/scopus` and returns native JSON.
-This public endpoint does not require an API key. It covers Scopus subject
-classifications; the separate ScienceDirect classification endpoint is outside
-this tool's scope.
-
-## Example
+`subject_classifications` retrieves or filters Scopus subject codes and
+descriptions via `GET /content/subject/scopus`. No API key is required.
 
 ```json
 {
@@ -15,30 +10,27 @@ this tool's scope.
 }
 ```
 
-Pass `{}` to retrieve all classifications in one request.
+Pass `{}` to retrieve all classifications.
 
-| Parameter     | Meaning                                                                                      |
+## Parameters
+
+All parameters are optional strings.
+
+| Parameter     | Description                                                                                  |
 | ------------- | -------------------------------------------------------------------------------------------- |
 | `description` | Case-insensitive partial match on the primary description.                                   |
 | `detail`      | Case-insensitive partial match on the detail, e.g. `food`.                                   |
-| `code`        | Exact code as a string, e.g. `1106`.                                                         |
+| `code`        | Exact code, e.g. `1106`.                                                                     |
 | `abbrev`      | Case-insensitive exact abbreviation, e.g. `AGRI`.                                            |
 | `field`       | Comma-separated `code`, `abbrev`, `detail`, and/or `description`. Omit to return all fields. |
 
-All parameters are optional. The endpoint has no pagination or `view` parameter.
-`parentCode` belongs to the ScienceDirect endpoint and is not accepted here.
+## Notes
 
-## Response
-
-The native `subject-classifications` wrapper is retained. Its
-`subject-classification` value may be a single object or an array. No matches
-can return HTTP 200 with `{"error":"No results found"}` inside the wrapper;
-this remains a successful native response. Field selection, nulls, and unknown
-fields are preserved without adding defaults or normalizing cardinality.
-
-See the [README](../../README.md#responses-and-errors) for the shared MCP
-response and error contract.
+Within `subject-classifications`, `subject-classification` can be an object or
+an array. No matches can return HTTP 200 with `{"error":"No results found"}` inside
+the wrapper; this is a successful response.
 
 ## API reference
 
-- [Subject Classifications parameters](https://dev.elsevier.com/documentation/SubjectClassificationsAPI.wadl)
+- [Parameters](https://dev.elsevier.com/documentation/SubjectClassificationsAPI.wadl)
+- [Responses and errors](../../README.md#responses-and-errors)

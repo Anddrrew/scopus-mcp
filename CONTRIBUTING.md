@@ -1,13 +1,12 @@
 # Contributing
 
-Bug reports, documentation improvements, and focused pull requests are welcome.
-For bugs, include the package version, Node.js version, MCP client, steps to
-reproduce, and relevant errors. Remove API keys, institutional tokens, and private
-data from reports and fixtures.
+For bug reports, include the package and Node.js versions, MCP client, steps to
+reproduce, and relevant errors. Remove credentials and private data from reports
+and test fixtures.
 
-## Set up
+## Local setup
 
-Requires Node.js >=22.22.0 and npm. CI uses the latest Node.js 24 release.
+Requires Node.js >=22.22.0 and npm. CI runs on the latest Node.js 24 release.
 
 ```sh
 git clone https://github.com/Anddrrew/scopus-mcp.git
@@ -16,77 +15,22 @@ npm ci
 npm run check
 ```
 
-`npm ci` installs a Husky pre-push hook that runs `npm run check`. Tests use
-synthetic Elsevier-shaped fixtures, make no live API requests, and need no key.
+`npm ci` installs the Husky pre-push hook, which runs `npm run check`. Tests use
+synthetic API responses and run offline without credentials.
 
 | Command              | Purpose                                                   |
 | -------------------- | --------------------------------------------------------- |
-| `npm run dev`        | Run the TypeScript stdio server through `tsx`.            |
-| `npm run build`      | Check types and bundle the CLI into `dist/`.              |
-| `npm start`          | Run the built CLI.                                        |
+| `npm run dev`        | Start the stdio server from TypeScript.                   |
+| `npm run build`      | Typecheck and bundle the CLI into `dist/`.                |
+| `npm start`          | Start the built CLI.                                      |
+| `npm test`           | Build and run tests.                                      |
+| `npm run test:run`   | Run tests against an existing build.                      |
+| `npm run lint:fix`   | Apply ESLint fixes.                                       |
+| `npm run format`     | Format code and documentation.                            |
 | `npm run check`      | Run lint, formatting checks, typecheck, build, and tests. |
-| `npm test`           | Build, then run all tests.                                |
-| `npm run test:run`   | Run tests using the existing build.                       |
-| `npm run lint:fix`   | Apply available ESLint fixes.                             |
-| `npm run format`     | Format source and documentation.                          |
-| `npm pack --dry-run` | Build and inspect the npm package contents.               |
+| `npm pack --dry-run` | Build and inspect the package contents.                   |
 
-## Project layout
-
-```text
-src/
-  index.ts                  # Stdio startup
-  server.ts                 # MCP server and tool registration
-  config.ts                 # Environment configuration
-  scopus/                   # Shared HTTP client and API errors
-  tools/<tool-name>/
-    tool.ts                 # Tool registration and request handling
-    schemas.ts              # Input and output schemas
-test/
-  *.test.ts                 # Configuration and compiled stdio tests
-  scopus/                   # HTTP client tests
-  tools/                    # Tool tests through MCP
-  helpers/                  # Shared test utilities
-  fixtures/<tool-name>/     # Synthetic API JSON responses
-docs/
-  tools/                    # Parameters and examples for each tool
-  releases.md               # Maintainer release instructions
-```
-
-Keep types, helpers, and builders near their consumers. Extract shared code when
-multiple tools need it; avoid adding empty layers or a generic API framework.
-
-## Adding a tool
-
-1. Use the [official API specification](https://dev.elsevier.com/sc_api_spec.html)
-   to check endpoints, parameters, views, and JSON examples.
-2. Add the handler and schemas under `src/tools/<tool-name>/` and register the
-   tool in `src/server.ts`.
-3. Preserve native API parameter names and JSON structure. Use a strict input
-   schema, allow unknown response fields, and keep optional fields optional.
-   Credentials stay in server configuration. Request JSON through the shared
-   client and pass through the MCP cancellation signal.
-4. Keep each invocation to one API call, including endpoints that natively
-   accept multiple identifiers. Pagination stays explicit. Return validated
-   JSON in `structuredContent` with an `outputSchema` and a JSON text fallback;
-   retain the common error and quota metadata contract in the README.
-5. Test the tool through MCP with mocked HTTP: request paths and parameters,
-   native response preservation, invalid inputs, upstream failures, and invalid
-   response shapes. Include relevant partial, empty, or multiple-record results
-   and verify registration through the compiled stdio server.
-6. Add a reference under `docs/tools/` with an example, supported parameters,
-   relevant limits, and links to the official API docs. Add the tool to the
-   README table.
-7. Run `npm run check` and `npm pack --dry-run --ignore-scripts` before pushing.
-
-Use TypeScript for code, scripts, and tests. Relative TypeScript imports omit
-file extensions. ESLint checks types and JSON; Prettier controls formatting.
-The build bundles the CLI as Node ESM with npm dependencies kept external.
-Never write diagnostics to stdout: it carries the MCP protocol.
-
-## Try a local build in an MCP client
-
-Run `npm run build`, then configure:
+To use a local build, run `npm run build` and configure your MCP client:
 
 ```json
 {
@@ -102,15 +46,56 @@ Run `npm run build`, then configure:
 }
 ```
 
-Add `ELSEVIER_INST_TOKEN` if needed. The server does not load `.env` files.
-`npm run dev` also starts a stdio server and waits for MCP messages on stdin.
+See [Configuration](README.md#configuration) for credentials. The stdio server
+waits for MCP messages on stdin; send diagnostics to stderr.
+
+## Project structure
+
+```text
+src/
+  index.ts                  # Stdio startup
+  server.ts                 # Tool registration
+  config.ts                 # Environment configuration
+  scopus/                   # Shared HTTP client and errors
+  tools/<tool-name>/
+    tool.ts                 # Registration and request handling
+    schemas.ts              # Input and output schemas
+test/
+  *.test.ts                 # Configuration and compiled stdio tests
+  scopus/                   # HTTP client tests
+  tools/                    # Tool tests through MCP
+  helpers/                  # Test utilities
+  fixtures/<tool-name>/     # Synthetic API responses
+docs/
+  tools/                    # Tool references
+  releases.md               # Release instructions
+```
+
+Use TypeScript with extensionless relative imports. Keep types, helpers, and
+builders near their consumers; share code when multiple tools need it.
+
+## Adding a tool
+
+1. Check endpoints, parameters, views, and examples in the
+   [official API specification](https://dev.elsevier.com/sc_api_spec.html).
+2. Add `tool.ts` and `schemas.ts` under `src/tools/<tool-name>/`, then register
+   the tool in `src/server.ts`.
+3. Preserve native parameter names and JSON structure. Use strict input schemas
+   and output schemas that allow extra fields and optional data.
+4. Make one request through the shared HTTP client, passing the cancellation
+   signal. Keep credentials in server configuration and pagination explicit.
+   Follow the [response and error contract](README.md#responses-and-errors).
+5. Test through MCP with mocked HTTP: request parameters, response preservation,
+   invalid input, upstream errors, and relevant empty, partial, or batch results.
+   Include a compiled stdio test.
+6. Document parameters, examples, and limits in `docs/tools/` and add the tool to
+   the README table.
+7. Run `npm run check` and `npm pack --dry-run --ignore-scripts` before pushing.
 
 ## Pull requests
 
 Branch from `main` using `feature/<name>` or `fix/<name>`. Keep each API module
-in a separate PR with its tests and documentation. Describe the resulting
-behavior, the official API reference, and what was verified. PR checks run in
-one sequential pipeline on Node.js 24.
+in a separate PR with its tests and documentation. Describe the behavior, API
+reference, and validation. CI runs its checks in one sequential job.
 
-Leave package versions unchanged: maintainers prepare releases separately.
-See the [release guide](docs/releases.md).
+Leave version changes to the [release workflow](docs/releases.md).
