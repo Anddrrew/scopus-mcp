@@ -212,8 +212,9 @@ await test('pagination bounds and field overrides do not reject valid requests',
     { query: 'test', view: 'COMPLETE', count: 25 },
     { query: 'test', view: 'COMPONENT', count: 25 },
     { query: 'test', view: 'COMPLETE', field: 'title', count: 100 },
-  ])
+  ]) {
     assert.ok(inputSchema.safeParse(args).success);
+  }
 });
 
 await test('upstream failures are MCP tool errors, not successful search payloads', async (t) => {

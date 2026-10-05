@@ -37,13 +37,17 @@ export class ScopusClient {
       );
     }
     for (const [key, value] of Object.entries(params)) {
-      if (value !== undefined) url.searchParams.set(key, String(value));
+      if (value !== undefined) {
+        url.searchParams.set(key, String(value));
+      }
     }
     const headers = new Headers({
       Accept: 'application/json',
       'X-ELS-APIKey': apiKey,
     });
-    if (instToken) headers.set('X-ELS-Insttoken', instToken);
+    if (instToken) {
+      headers.set('X-ELS-Insttoken', instToken);
+    }
     const timeout = AbortSignal.timeout(this.timeoutMs);
     const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
 
@@ -62,7 +66,9 @@ export class ScopusClient {
         'Retry-After',
       ]) {
         const value = response.headers.get(name);
-        if (value !== null) metadata[name] = value;
+        if (value !== null) {
+          metadata[name] = value;
+        }
       }
       const text = await response.text();
       let body: unknown;
@@ -79,18 +85,23 @@ export class ScopusClient {
           );
         }
       }
-      if (!response.ok)
+      if (!response.ok) {
         throw apiError(response.status, body, metadata, [
           apiKey,
           instToken ?? '',
         ]);
+      }
       return { body, headers: metadata };
     } catch (error) {
-      if (error instanceof ScopusError) throw error;
-      if (signal?.aborted)
+      if (error instanceof ScopusError) {
+        throw error;
+      }
+      if (signal?.aborted) {
         throw new ScopusError('CANCELLED', 'Scopus request was cancelled.');
-      if (timeout.aborted)
+      }
+      if (timeout.aborted) {
         throw new ScopusError('TIMEOUT', 'Scopus request timed out.');
+      }
       throw new ScopusError('NETWORK_ERROR', 'Could not reach the Scopus API.');
     }
   }

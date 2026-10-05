@@ -46,4 +46,9 @@ export default defineConfig(
     extends: [jsonc.configs['recommended-with-json']],
   },
   prettier,
+  {
+    files: ['**/*.ts'],
+    // The "all" option is compatible with Prettier, which disables curly by default.
+    rules: { curly: ['error', 'all'] },
+  },
 );
