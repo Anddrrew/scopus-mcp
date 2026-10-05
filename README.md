@@ -62,6 +62,7 @@ without a key returns `MISSING_API_KEY`.
 | Tool            | Description                                                          | Reference                                    |
 | --------------- | -------------------------------------------------------------------- | -------------------------------------------- |
 | `scopus_search` | Search Scopus publications using native query syntax and pagination. | [Scopus Search](docs/tools/scopus-search.md) |
+| `plumx_metrics` | Retrieve publication metrics by DOI or another supported identifier. | [PlumX Metrics](docs/tools/plumx-metrics.md) |
 
 This table describes the checked-out revision. Use the README from your installed
 version's Git tag when working with an older npm release.
