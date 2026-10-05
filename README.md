@@ -59,10 +59,14 @@ without a key returns `MISSING_API_KEY`.
 
 ## Available tools
 
-| Tool            | Description                                                          | Reference                                    |
-| --------------- | -------------------------------------------------------------------- | -------------------------------------------- |
-| `scopus_search` | Search Scopus publications using native query syntax and pagination. | [Scopus Search](docs/tools/scopus-search.md) |
-| `plumx_metrics` | Retrieve publication metrics by DOI or another supported identifier. | [PlumX Metrics](docs/tools/plumx-metrics.md) |
+| Tool                    | Description                                                                  | Reference                                                    |
+| ----------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `scopus_search`         | Search Scopus publications using native query syntax and pagination.         | [Scopus Search](docs/tools/scopus-search.md)                 |
+| `author_search`         | Search author profiles or find co-authors.                                   | [Author Search](docs/tools/author-search.md)                 |
+| `affiliation_search`    | Search institution profiles with native query syntax.                        | [Affiliation Search](docs/tools/affiliation-search.md)       |
+| `author_retrieval`      | Retrieve one or multiple Scopus author profiles by author ID, EID, or ORCID. | [Author Retrieval](docs/tools/author-retrieval.md)           |
+| `affiliation_retrieval` | Retrieve a Scopus institution profile by affiliation ID or EID.              | [Affiliation Retrieval](docs/tools/affiliation-retrieval.md) |
+| `plumx_metrics`         | Retrieve publication metrics by DOI or another supported identifier.         | [PlumX Metrics](docs/tools/plumx-metrics.md)                 |
 
 This table describes the checked-out revision. Use the README from your installed
 version's Git tag when working with an older npm release.

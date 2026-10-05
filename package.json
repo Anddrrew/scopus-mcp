@@ -1,6 +1,6 @@
 {
   "name": "scopus-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Scopus API access over the Model Context Protocol (stdio).",
   "type": "module",
   "license": "MIT",
