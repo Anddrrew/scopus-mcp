@@ -61,13 +61,21 @@ packaging checks on the latest available Node 24 release. Develop on `feature/*`
 
 Releases are tags on `main`; no release branch is needed:
 
-1. Update the version with `npm version 0.1.0 --no-git-tag-version` (use the
-   intended version) and merge both package files through a PR.
-2. In GitHub Actions, select **Release → Run workflow**, choose `main`, and enter
-   the exact version without `v`. Leave **dry_run** enabled to validate first.
-3. Once npm access is configured, run again with **dry_run** disabled. The workflow
-   checks the selected main commit, creates `v<version>`, publishes the built npm
-   archive with provenance to `latest`, and creates a GitHub release with notes.
+1. Merge the changes you want to release into `main`.
+2. In GitHub Actions, select **Release → Run workflow**, choose `main`, and select
+   `patch` (default), `minor`, or `major`. For example, from `0.1.0` these produce
+   `0.1.1`, `0.2.0`, and `1.0.0` respectively.
+3. Leave **dry_run** enabled to update the version only in the temporary runner,
+   run the checks, and validate the archive. No commit, tag, or publication is made.
+4. Once npm access is configured, start a new run with **dry_run** disabled. It
+   updates both package files, runs all checks, builds the archive, commits the
+   version to `main`, tags that commit, publishes to npm `latest`, and creates a
+   GitHub release. You do not need to edit the version manually.
+
+The workflow uses the selected main commit. If main advances before preparation
+or while checks run, the release fails instead of overwriting newer changes;
+start a new run from main. The version commit and tag are pushed atomically.
+Repository rules must permit the workflow bot to push the version commit to main.
 
 Publishing uses [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/)
 (OIDC). Before the first automated publication, ensure the npm package name is
@@ -77,11 +85,12 @@ publishing allowed. If npm requires an initial manual publication before package
 settings are available, bootstrap it manually, then use this workflow for the
 next version. No npm token is stored in this repository.
 
-Only stable versions are accepted. A tag on another commit is rejected. If npm
-publication fails, fix the publisher configuration and rerun the same workflow
-run; the existing tag is accepted only for the same commit. If npm succeeded but
-GitHub release creation failed, create the GitHub release from that existing tag
-instead of attempting to republish the immutable npm version.
+Only stable versions are accepted. If a release fails after the version commit
+and tag were pushed, those refs remain in place. Do not start another bump to
+recover that version: check npm first, then finish publication from the existing
+tag (or create only the GitHub release if npm publication succeeded). Re-running
+the original workflow is rejected because main has moved to the version commit.
+An npm version that was already published cannot be published again.
 
 The manual workflow becomes available after this change is merged into `main`.
 Branch protection is configured separately in GitHub; this workflow alone does
