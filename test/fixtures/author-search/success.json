@@ -1,0 +1,69 @@
+{
+  "search-results": {
+    "opensearch:totalResults": "1",
+    "opensearch:startIndex": "0",
+    "opensearch:itemsPerPage": "25",
+    "opensearch:Query": {
+      "@role": "request",
+      "@searchTerms": "AUTHLASTNAME(Smith)",
+      "@startPage": "0"
+    },
+    "link": [
+      {
+        "@ref": "next",
+        "@href": "https://api.elsevier.com/content/search/author?start=25"
+      }
+    ],
+    "entry": [
+      {
+        "@_fa": "true",
+        "dc:identifier": "AUTHOR_ID:7000000001",
+        "prism:url": "https://api.elsevier.com/content/author/author_id/7000000001",
+        "eid": "9-s2.0-7000000001",
+        "orcid": null,
+        "document-count": "12",
+        "preferred-name": {
+          "surname": "Smith",
+          "given-name": "Alex",
+          "initials": "A.",
+          "future-name": null
+        },
+        "name-variant": [
+          {
+            "surname": "Smith",
+            "initials": "A."
+          }
+        ],
+        "affiliation-current": {
+          "affiliation-id": "600000001",
+          "affiliation-name": "Example University",
+          "affiliation-city": null,
+          "affiliation-country": "Ukraine",
+          "future-affiliation": {
+            "enabled": true
+          }
+        },
+        "subject": [
+          {
+            "@abbr": "COMP",
+            "@frequency": "12",
+            "$": "Computer Science",
+            "@force-array": "true"
+          }
+        ],
+        "subject-area": "COMP",
+        "link": [
+          {
+            "@ref": "self",
+            "@href": "https://api.elsevier.com/content/author/author_id/7000000001"
+          }
+        ],
+        "future-entry": {
+          "nested": [1, "2", null]
+        }
+      }
+    ],
+    "future-search": true
+  },
+  "future-root": null
+}
