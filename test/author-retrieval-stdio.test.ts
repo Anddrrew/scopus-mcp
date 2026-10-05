@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+import { assertStartupLog } from './helpers/startup-log';
 
 await test(
   'compiled stdio advertises author retrieval and preserves native batch JSON',
@@ -59,9 +60,9 @@ await test(
       assert.deepEqual(result.content, [
         { type: 'text', text: JSON.stringify(payload) },
       ]);
-      assert.equal(stderr, '');
     } finally {
       await client.close();
     }
+    assertStartupLog(stderr, ['stdio-key', 'stdio-token']);
   },
 );

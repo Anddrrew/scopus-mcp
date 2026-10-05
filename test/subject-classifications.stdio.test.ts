@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+import { assertStartupLog } from './helpers/startup-log';
 
 await test(
   'compiled stdio CLI lists and calls subject classifications without credentials',
@@ -50,9 +51,9 @@ await test(
         ),
       ) as unknown;
       assert.deepEqual(result.structuredContent, payload);
-      assert.equal(stderr, '');
     } finally {
       await client.close();
     }
+    assertStartupLog(stderr);
   },
 );

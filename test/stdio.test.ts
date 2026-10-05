@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { searchFixture } from './helpers/fixtures';
+import { assertStartupLog, packageMetadata } from './helpers/startup-log';
 
 await test(
   'compiled CLI initializes, advertises search and reports missing credentials',
@@ -24,7 +25,13 @@ await test(
     });
     try {
       await client.connect(transport);
-      assert.equal(client.getServerVersion()?.name, 'scopus-mcp');
+      assert.equal(client.getServerVersion()?.name, packageMetadata.name);
+      assert.equal(client.getServerVersion()?.version, packageMetadata.version);
+      assert.ok(
+        client
+          .getInstructions()
+          ?.includes(`${packageMetadata.name} v${packageMetadata.version}`),
+      );
       await client.ping();
       const { tools } = await client.listTools();
       assert.equal(tools[0]?.name, 'scopus_search');
@@ -34,10 +41,10 @@ await test(
       });
       assert.equal(result.isError, true);
       assert.match(JSON.stringify(result.content), /MISSING_API_KEY/);
-      assert.equal(stderr, '');
     } finally {
       await client.close();
     }
+    assertStartupLog(stderr);
   },
 );
 
@@ -74,9 +81,9 @@ await test(
       });
       assert.notEqual(result.isError, true);
       assert.deepEqual(result.structuredContent, searchFixture('success'));
-      assert.equal(stderr, '');
     } finally {
       await client.close();
     }
+    assertStartupLog(stderr, ['stdio-test-key', 'stdio-test-token']);
   },
 );

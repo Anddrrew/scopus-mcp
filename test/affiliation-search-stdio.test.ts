@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+import { assertStartupLog } from './helpers/startup-log';
 
 await test(
   'compiled stdio server advertises and calls affiliation search',
@@ -58,9 +59,9 @@ await test(
       });
       assert.notEqual(result.isError, true);
       assert.deepEqual(result.structuredContent, payload);
-      assert.equal(stderr, '');
     } finally {
       await client.close();
     }
+    assertStartupLog(stderr, ['stdio-affiliation-key']);
   },
 );

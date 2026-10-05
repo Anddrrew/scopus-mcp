@@ -41,6 +41,10 @@ Set credentials in the client's `env` object. The server does not load `.env`
 files. Access to data and views depends on your Elsevier subscription and
 institutional access.
 
+At startup, the server writes one JSON record to `stderr` with its version, PID,
+transport, and entrypoint path. The version is also included in MCP `serverInfo`
+and `instructions`. Clients decide whether to display these diagnostics.
+
 ## Tools
 
 This list reflects `main`. For published versions, see the README at the
