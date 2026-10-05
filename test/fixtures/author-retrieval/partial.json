@@ -1,0 +1,16 @@
+{
+  "author-retrieval-response": [
+    {
+      "coredata": {
+        "dc:identifier": "AUTHOR_ID:1000000001"
+      },
+      "documents": {
+        "@count": "0",
+        "document": null
+      },
+      "future-profile": null
+    },
+    {}
+  ],
+  "future-root": [null, "unchanged"]
+}
