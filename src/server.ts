@@ -6,6 +6,7 @@ import { registerAffiliationRetrieval } from './tools/affiliation-retrieval/tool
 import { registerAffiliationSearch } from './tools/affiliation-search/tool';
 import { registerAuthorRetrieval } from './tools/author-retrieval/tool';
 import { registerAuthorSearch } from './tools/author-search/tool';
+import { registerCitationOverview } from './tools/citation-overview/tool';
 import { registerPlumxMetrics } from './tools/plumx-metrics/tool';
 import { registerScopusSearch } from './tools/scopus-search/tool';
 
@@ -26,5 +27,6 @@ export function createServer(
   registerAuthorRetrieval(server, client);
   registerAffiliationRetrieval(server, client);
   registerPlumxMetrics(server, client);
+  registerCitationOverview(server, client);
   return server;
 }

@@ -1,0 +1,87 @@
+{
+  "abstract-citations-response": {
+    "h-index": "2",
+    "identifier-legend": {
+      "identifier": [
+        {
+          "@_fa": "true",
+          "dc:identifier": "SCOPUS_ID:1000000001",
+          "scopus_id": "1000000001"
+        },
+        {
+          "dc:identifier": "SCOPUS_ID:1000000002",
+          "prism:doi": null
+        }
+      ]
+    },
+    "citeInfoMatrix": {
+      "citeInfoMatrixXML": {
+        "citationMatrix": {
+          "citeInfo": [
+            {
+              "dc:identifier": "SCOPUS_ID:1000000001",
+              "dc:title": "Synthetic citation example",
+              "author": [
+                {
+                  "authid": "2000000001",
+                  "surname": "Example",
+                  "future-field": null
+                }
+              ],
+              "citationType": {
+                "@code": "ar",
+                "$": "Article"
+              },
+              "sort-year": "2020",
+              "pcc": "0",
+              "cc": [
+                {
+                  "@_fa": "true",
+                  "$": "2"
+                },
+                {
+                  "@_fa": "true",
+                  "$": "3"
+                }
+              ],
+              "lcc": "0",
+              "rangeCount": "5",
+              "rowTotal": "5",
+              "future-field": {
+                "values": [1, "2", null]
+              }
+            },
+            {
+              "dc:identifier": "SCOPUS_ID:1000000002",
+              "cc": null,
+              "rowTotal": "0"
+            }
+          ]
+        }
+      }
+    },
+    "citeColumnTotalXML": {
+      "citeCountHeader": {
+        "columnHeading": [
+          {
+            "$": "2024"
+          },
+          {
+            "$": "2025"
+          }
+        ],
+        "columnTotal": [
+          {
+            "$": "2"
+          },
+          {
+            "$": "3"
+          }
+        ],
+        "grandTotal": "5"
+      }
+    },
+    "future-field": true
+  },
+  "future-root": null
+}

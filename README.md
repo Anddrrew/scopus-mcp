@@ -67,6 +67,7 @@ without a key returns `MISSING_API_KEY`.
 | `author_retrieval`      | Retrieve one or multiple Scopus author profiles by author ID, EID, or ORCID. | [Author Retrieval](docs/tools/author-retrieval.md)           |
 | `affiliation_retrieval` | Retrieve a Scopus institution profile by affiliation ID or EID.              | [Affiliation Retrieval](docs/tools/affiliation-retrieval.md) |
 | `plumx_metrics`         | Retrieve publication metrics by DOI or another supported identifier.         | [PlumX Metrics](docs/tools/plumx-metrics.md)                 |
+| `citation_overview`     | Retrieve yearly citation counts and summaries for specified publications.    | [Citation Overview](docs/tools/citation-overview.md)         |
 
 This table describes the checked-out revision. Use the README from your installed
 version's Git tag when working with an older npm release.
