@@ -89,7 +89,7 @@ export class ScopusClient {
         }
       }
       if (!response.ok) {
-        throw apiError(response.status, body, metadata, [
+        throw await apiError(response.status, body, metadata, [
           apiKey ?? '',
           instToken ?? '',
         ]);

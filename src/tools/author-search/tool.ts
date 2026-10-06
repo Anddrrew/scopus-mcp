@@ -1,4 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/server';
+import { validateSchema } from '../../schemas/schema';
 import type { ScopusClient } from '../../scopus/client';
 import { ScopusError } from '../../scopus/errors';
 import { inputSchema, outputSchema } from './schemas';
@@ -26,11 +27,15 @@ export function registerAuthorSearch(
       try {
         const response = await client.get(
           '/content/search/author',
-          input,
+          {
+            ...input,
+            view: input.view ?? 'STANDARD',
+            count: input.count ?? 25,
+          },
           ctx.mcpReq.signal,
         );
-        const parsed = outputSchema.safeParse(response.body);
-        if (!parsed.success) {
+        const parsed = await validateSchema(outputSchema, response.body);
+        if (parsed.issues) {
           throw new ScopusError(
             'INVALID_RESPONSE',
             'Scopus returned an unexpected author search response.',
@@ -39,8 +44,8 @@ export function registerAuthorSearch(
           );
         }
         return {
-          structuredContent: parsed.data,
-          content: [{ type: 'text', text: JSON.stringify(parsed.data) }],
+          structuredContent: parsed.value,
+          content: [{ type: 'text', text: JSON.stringify(parsed.value) }],
           _meta: { 'scopus-mcp/headers': response.headers },
         };
       } catch (error) {

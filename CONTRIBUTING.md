@@ -56,13 +56,17 @@ src/
   index.ts                  # Stdio startup
   server.ts                 # Tool registration
   config.ts                 # Environment configuration
+  schemas/
+    fields.ts               # Reusable native JSON field builders
+    schema.ts               # TypeBox-to-MCP adapter and validation
   scopus/                   # Shared HTTP client and errors
   tools/<tool-name>/
     tool.ts                 # Registration and request handling
-    schemas.ts              # Input and output schemas
+    schemas.ts              # TypeBox input/output schemas and descriptions
 test/
   *.test.ts                 # Configuration and compiled stdio tests
-  scopus/                   # HTTP client tests
+  schemas/                  # Shared validation and published schema contracts
+  scopus/                   # HTTP client and API error tests
   tools/                    # Tool tests through MCP
   helpers/                  # Test utilities
   fixtures/<tool-name>/     # Synthetic API responses
@@ -73,6 +77,48 @@ docs/
 
 Use TypeScript with extensionless relative imports. Keep types, helpers, and
 builders near their consumers; share code when multiple tools need it.
+
+## Schemas and validation
+
+Use TypeBox to build JSON Schema and `defineSchema` from `src/schemas/schema.ts`
+to register it with MCP. The SDK's `fromJsonSchema` adapter validates the same
+document that clients receive through `tools/list`. TypeScript types are inferred
+from the TypeBox definition; do not maintain a separate interface for its fields.
+
+- Describe every input and output property, including nested fields. Explain the
+  field's meaning, native representation, and relevant limits or interactions.
+  Keep descriptions next to the field and align them with the API documentation.
+- Use `additionalProperties: false` for inputs and `true` for open API response
+  objects. Preserve unknown response fields, string counts, and native envelopes.
+- An optional field may be absent; a nullable field may explicitly contain
+  `null`. Preserve this distinction with `Type.Optional` and
+  `Type.Union([schema, Type.Null()])`. `optionalText(description)` handles the
+  common optional, nullable text fields.
+- Encode portable rules in JSON Schema: `pattern`, numeric bounds, `oneOf` for
+  alternative required identifiers, and `if`/`then` or `not` for parameter
+  combinations. Keep custom JavaScript checks only for rules such as sums across
+  fields, and describe those rules in the schema. `defineSchema` accepts an
+  optional check for this purpose, after structural validation.
+- JSON Schema `default` is documentation, not an instruction to mutate input.
+  Apply server defaults explicitly when constructing request parameters; leave
+  API-managed defaults absent. Validation does not coerce or remove values.
+- Validate upstream JSON with `validateSchema` before returning it, so malformed
+  responses retain the tool's `INVALID_RESPONSE` error contract.
+
+Tests must exercise tools through MCP with mocked HTTP, including invalid inputs
+that never reach HTTP, defaults and boundaries, and native response preservation.
+Test cross-field rules against the schemas returned by `tools/list`, too.
+`test/schemas/contracts.test.ts` independently validates every advertised schema
+against JSON Schema 2020-12 and checks descriptions and the nullable/open-object
+forms that previously caused Inspector warnings.
+
+For an additional manual check with MCP Inspector after building:
+
+```sh
+npx --yes @modelcontextprotocol/inspector@2.9.0 --cli node dist/index.js --method tools/list --strict
+```
+
+This lists and checks schemas without calling Elsevier or requiring an API key.
 
 ## Adding a tool
 

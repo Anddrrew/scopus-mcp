@@ -2,7 +2,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test, type TestContext } from 'node:test';
 import { Client } from '@modelcontextprotocol/client';
-import { InMemoryTransport } from '@modelcontextprotocol/server';
+import {
+  fromJsonSchema,
+  InMemoryTransport,
+  type JsonSchemaType,
+} from '@modelcontextprotocol/server';
+import { validateSchema } from '../../src/schemas/schema';
 import { createServer } from '../../src/server';
 import { ScopusClient } from '../../src/scopus/client';
 import { mockFetch } from '../helpers/mock-fetch';
@@ -124,6 +129,8 @@ for (const input of [
   { detail: '  ' },
   { field: 'unknown' },
   { field: 'code,' },
+  { field: 'code, detail' },
+  { field: 'code\n' },
   { parentCode: '11' },
   { view: 'STANDARD' },
   { start: 0 },
@@ -133,20 +140,51 @@ for (const input of [
   await test(`invalid subject input is rejected before HTTP: ${JSON.stringify(input)}`, async (t) => {
     const mock = mockFetch(Response.json({}));
     const client = await connect(t, new ScopusClient({}, mock.fetch));
-    let rejected: boolean;
-    try {
-      const result = await client.callTool({
-        name: 'subject_classifications',
-        arguments: input,
-      });
-      rejected = result.isError === true;
-    } catch {
-      rejected = true;
-    }
-    assert.ok(rejected);
+    const result = await client.callTool({
+      name: 'subject_classifications',
+      arguments: input,
+    });
+    assert.equal(result.isError, true);
+    assert.match(JSON.stringify(result.content), /Input validation error/);
     assert.equal(mock.requests.length, 0);
   });
 }
+
+await test('subject classifications publishes exact field-list validation to clients', async (t) => {
+  const mock = mockFetch(Response.json({}));
+  const client = await connect(t, new ScopusClient({}, mock.fetch));
+  const { tools } = await client.listTools();
+  const tool = tools.find(
+    (candidate) => candidate.name === 'subject_classifications',
+  );
+  assert.ok(tool);
+  const schema = fromJsonSchema(tool.inputSchema as JsonSchemaType);
+
+  for (const value of [
+    {},
+    { field: 'code' },
+    { field: 'description,abbrev,detail,code' },
+    { field: 'code,code' },
+  ]) {
+    const result = await validateSchema(schema, value);
+    assert.equal(result.issues, undefined, JSON.stringify(value));
+    assert.deepEqual(result.value, value);
+  }
+  for (const field of [
+    '',
+    'Code',
+    'code,',
+    ',code',
+    'code, detail',
+    'code\n',
+    'code\r\n',
+    'code,unknown',
+  ]) {
+    const result = await validateSchema(schema, { field });
+    assert.ok(result.issues, JSON.stringify(field));
+  }
+  assert.equal(mock.requests.length, 0);
+});
 
 for (const payload of [
   { unexpected: true },

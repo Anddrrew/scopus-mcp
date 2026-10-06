@@ -2,7 +2,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test, type TestContext } from 'node:test';
 import { Client } from '@modelcontextprotocol/client';
-import { InMemoryTransport } from '@modelcontextprotocol/server';
+import {
+  fromJsonSchema,
+  InMemoryTransport,
+  type JsonSchemaType,
+} from '@modelcontextprotocol/server';
+import { validateSchema } from '../../src/schemas/schema';
 import { createServer } from '../../src/server';
 import { ScopusClient } from '../../src/scopus/client';
 import { mockFetch } from '../helpers/mock-fetch';
@@ -179,11 +184,17 @@ for (const args of [
   { scopus_id: '' },
   { scopus_id: '  ' },
   { scopus_id: '1,,2' },
+  { scopus_id: '1, \t,2' },
+  { scopus_id: ',1' },
+  { scopus_id: '1,' },
   { scopus_id: '1', doi: '10.1234/test' },
+  { scopus_id: '1', doi: '10.1234/test', pii: 'S1', pubmed_id: '2' },
   { author_id: '2' },
   { scopus_id: '1', count: -1 },
   { scopus_id: '1', count: 1.5 },
   { scopus_id: '1', start: -1 },
+  { scopus_id: '1', start: Number.MAX_SAFE_INTEGER + 1 },
+  { scopus_id: '1', count: Number.MAX_SAFE_INTEGER + 1 },
   { scopus_id: '1', citation: 'all' },
   { scopus_id: '1', view: 'FULL' },
   { scopus_id: '1', sort: 'rowTotal,sort-year' },
@@ -192,18 +203,48 @@ for (const args of [
 ]) {
   await test(`citation overview rejects invalid input before HTTP: ${JSON.stringify(args)}`, async (t) => {
     const { client, mock } = await connect(t, Response.json({}));
-    let rejected: boolean;
-    try {
-      rejected =
-        (await client.callTool({ name: 'citation_overview', arguments: args }))
-          .isError === true;
-    } catch {
-      rejected = true;
-    }
-    assert.ok(rejected);
+    const result = await client.callTool({
+      name: 'citation_overview',
+      arguments: args,
+    });
+    assert.equal(result.isError, true);
+    assert.match(JSON.stringify(result.content), /Input validation error/);
     assert.equal(mock.requests.length, 0);
   });
 }
+
+await test('citation overview publishes identifier selection and list constraints to clients', async (t) => {
+  const { client, mock } = await connect(t, Response.json({}));
+  const { tools } = await client.listTools();
+  const tool = tools.find(
+    (candidate) => candidate.name === 'citation_overview',
+  );
+  assert.ok(tool);
+  const schema = fromJsonSchema(tool.inputSchema as JsonSchemaType);
+
+  for (const value of [
+    { scopus_id: ' 1 , 2 ' },
+    { doi: '10.1234/a?query=1&x=2,10.1234/b' },
+    { pii: 'S1' },
+    { pubmed_id: '1', author_id: '2, 3', start: 0, count: 0 },
+  ]) {
+    const result = await validateSchema(schema, value);
+    assert.equal(result.issues, undefined, JSON.stringify(value));
+    assert.deepEqual(result.value, value);
+  }
+  for (const value of [
+    {},
+    { author_id: '1' },
+    { scopus_id: '1', pubmed_id: '2' },
+    { scopus_id: '1,\n\t,2' },
+    { doi: '10.1234/a', author_id: '2,' },
+    { pii: 'S1', count: Number.MAX_SAFE_INTEGER + 1 },
+  ]) {
+    const result = await validateSchema(schema, value);
+    assert.ok(result.issues, JSON.stringify(value));
+  }
+  assert.equal(mock.requests.length, 0);
+});
 
 for (const status of [403, 429]) {
   await test(`citation overview retains upstream ${status} error and quota headers`, async (t) => {

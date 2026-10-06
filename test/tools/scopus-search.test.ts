@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { Client } from '@modelcontextprotocol/client';
 import { InMemoryTransport } from '@modelcontextprotocol/server';
+import { validateSchema } from '../../src/schemas/schema';
 import { createServer } from '../../src/server';
 import { ScopusClient } from '../../src/scopus/client';
 import {
@@ -65,7 +66,10 @@ for (const name of ['success', 'empty']) {
     assert.deepEqual(result._meta?.['scopus-mcp/headers'], {
       'X-RateLimit-Remaining': '123',
     });
-    assert.ok(outputSchema.safeParse(result.structuredContent).success);
+    assert.equal(
+      (await validateSchema(outputSchema, result.structuredContent)).issues,
+      undefined,
+    );
     assert.equal(mock.requests.length, 1);
     const params = new URL(mock.requests[0]?.url ?? '').searchParams;
     assert.equal(params.get('view'), 'STANDARD');
@@ -170,6 +174,10 @@ for (const input of [
   {},
   { query: '' },
   { query: '  ' },
+  { query: 'test', count: null },
+  { query: 'test', count: '25' },
+  { query: 'test', view: null },
+  { query: 'test', start: 4976 },
   { query: 'test', count: -1 },
   { query: 'test', count: 201 },
   { query: 'test', count: 1.5 },
@@ -187,32 +195,28 @@ for (const input of [
       t,
       new ScopusClient({ apiKey: 'test' }, mock.fetch),
     );
-    // SDK validation may report a protocol error or an isError tool result, depending on the negotiated revision.
-    let rejected: boolean;
-    try {
-      const result = await client.callTool({
-        name: 'scopus_search',
-        arguments: input,
-      });
-      rejected = result.isError === true;
-    } catch {
-      rejected = true;
-    }
-    assert.ok(rejected);
+    const result = await client.callTool({
+      name: 'scopus_search',
+      arguments: input,
+    });
+    assert.equal(result.isError, true);
+    assert.match(JSON.stringify(result.content), /Input validation error/);
     assert.equal(mock.requests.length, 0);
   });
 }
 
-await test('pagination bounds and field overrides do not reject valid requests', () => {
+await test('pagination bounds and field overrides do not reject valid requests', async () => {
   for (const args of [
     { query: 'test', start: 4800, count: 200 },
     { query: 'test', count: 0 },
+    { query: 'test', start: 5000, count: 0 },
+    { query: 'test', start: 4975 },
     { query: 'test', cursor: 'next+/==', count: 200 },
     { query: 'test', view: 'COMPLETE', count: 25 },
     { query: 'test', view: 'COMPONENT', count: 25 },
     { query: 'test', view: 'COMPLETE', field: 'title', count: 100 },
   ]) {
-    assert.ok(inputSchema.safeParse(args).success);
+    assert.equal((await validateSchema(inputSchema, args)).issues, undefined);
   }
 });
 
@@ -256,3 +260,25 @@ await test('HTTP 200 with a wrong payload fails output validation', async (t) =>
   assert.equal(result.structuredContent, undefined);
   assert.match(JSON.stringify(result.content), /INVALID_RESPONSE/);
 });
+
+for (const [field, payload] of Object.entries({
+  count: { 'search-results': { 'opensearch:totalResults': 12 } },
+  identifier: { 'search-results': { entry: [{ 'dc:identifier': false }] } },
+  links: { 'search-results': { entry: [{ link: 'invalid-link-list' }] } },
+})) {
+  await test(`scopus-search rejects a malformed native ${field} field`, async (t) => {
+    const mock = mockFetch(Response.json(payload));
+    const client = await connect(
+      t,
+      new ScopusClient({ apiKey: 'test' }, mock.fetch),
+    );
+    const result = await client.callTool({
+      name: 'scopus_search',
+      arguments: { query: 'test' },
+    });
+    assert.equal(mock.requests.length, 1);
+    assert.equal(result.isError, true);
+    assert.equal(result.structuredContent, undefined);
+    assert.match(JSON.stringify(result.content), /INVALID_RESPONSE/);
+  });
+}

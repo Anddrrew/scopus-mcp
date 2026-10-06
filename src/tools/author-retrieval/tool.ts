@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import type { ScopusClient } from '../../scopus/client';
 import { ScopusError } from '../../scopus/errors';
+import { validateSchema } from '../../schemas/schema';
 import { inputSchema, outputSchema } from './schemas';
 
 export function registerAuthorRetrieval(
@@ -47,8 +48,8 @@ export function registerAuthorRetrieval(
           batch ? { ...params, [kind]: identifier } : params,
           ctx.mcpReq.signal,
         );
-        const parsed = outputSchema.safeParse(response.body);
-        if (!parsed.success) {
+        const parsed = await validateSchema(outputSchema, response.body);
+        if (parsed.issues) {
           throw new ScopusError(
             'INVALID_RESPONSE',
             'Scopus returned an unexpected author retrieval response.',
@@ -57,8 +58,8 @@ export function registerAuthorRetrieval(
           );
         }
         return {
-          structuredContent: parsed.data,
-          content: [{ type: 'text', text: JSON.stringify(parsed.data) }],
+          structuredContent: parsed.value,
+          content: [{ type: 'text', text: JSON.stringify(parsed.value) }],
           _meta: { 'scopus-mcp/headers': response.headers },
         };
       } catch (error) {

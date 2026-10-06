@@ -2,7 +2,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test, type TestContext } from 'node:test';
 import { Client } from '@modelcontextprotocol/client';
-import { InMemoryTransport } from '@modelcontextprotocol/server';
+import {
+  fromJsonSchema,
+  InMemoryTransport,
+  type JsonSchemaType,
+} from '@modelcontextprotocol/server';
+import { validateSchema } from '../../src/schemas/schema';
 import { createServer } from '../../src/server';
 import { ScopusClient } from '../../src/scopus/client';
 import { mockFetch } from '../helpers/mock-fetch';
@@ -185,21 +190,44 @@ for (const args of [
   { ...input, httpAccept: 'text/xml' },
   { ...input, view: 'STANDARD' },
   { ...input, reqId: '' },
+  { ...input, reqId: '\n\t' },
 ]) {
   await test(`PlumX rejects invalid input before HTTP: ${JSON.stringify(args)}`, async (t) => {
     const { client, mock } = await connect(t, Response.json({}));
-    let rejected: boolean;
-    try {
-      rejected =
-        (await client.callTool({ name: 'plumx_metrics', arguments: args }))
-          .isError === true;
-    } catch {
-      rejected = true;
-    }
-    assert.ok(rejected);
+    const result = await client.callTool({
+      name: 'plumx_metrics',
+      arguments: args,
+    });
+    assert.equal(result.isError, true);
+    assert.match(JSON.stringify(result.content), /Input validation error/);
     assert.equal(mock.requests.length, 0);
   });
 }
+
+await test('PlumX publishes identifier and path-segment validation without rewriting values', async (t) => {
+  const { client, mock } = await connect(t, Response.json({}));
+  const { tools } = await client.listTools();
+  const tool = tools.find((candidate) => candidate.name === 'plumx_metrics');
+  assert.ok(tool);
+  const schema = fromJsonSchema(tool.inputSchema as JsonSchemaType);
+
+  for (const idValue of [
+    '10.1234/example',
+    '../relative/id',
+    '%2e%2e',
+    ' . ',
+  ]) {
+    const value = { idType: 'doi', idValue };
+    const result = await validateSchema(schema, value);
+    assert.equal(result.issues, undefined, idValue);
+    assert.deepEqual(result.value, value);
+  }
+  for (const idValue of ['', '\t\n', '.', '..']) {
+    const result = await validateSchema(schema, { idType: 'doi', idValue });
+    assert.ok(result.issues, JSON.stringify(idValue));
+  }
+  assert.equal(mock.requests.length, 0);
+});
 
 for (const status of [401, 404, 429]) {
   await test(`PlumX retains HTTP ${status} as an error instead of synthesizing metrics`, async (t) => {

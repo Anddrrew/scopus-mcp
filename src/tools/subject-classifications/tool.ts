@@ -1,5 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import type { ScopusClient } from '../../scopus/client';
+import { validateSchema } from '../../schemas/schema';
 import { ScopusError } from '../../scopus/errors';
 import { inputSchema, outputSchema } from './schemas';
 
@@ -30,8 +31,8 @@ export function registerSubjectClassifications(
           ctx.mcpReq.signal,
           { requireApiKey: false },
         );
-        const parsed = outputSchema.safeParse(response.body);
-        if (!parsed.success) {
+        const parsed = await validateSchema(outputSchema, response.body);
+        if (parsed.issues) {
           throw new ScopusError(
             'INVALID_RESPONSE',
             'Scopus returned an unexpected subject classifications response.',
@@ -40,8 +41,8 @@ export function registerSubjectClassifications(
           );
         }
         return {
-          structuredContent: parsed.data,
-          content: [{ type: 'text', text: JSON.stringify(parsed.data) }],
+          structuredContent: parsed.value,
+          content: [{ type: 'text', text: JSON.stringify(parsed.value) }],
           _meta: { 'scopus-mcp/headers': response.headers },
         };
       } catch (error) {

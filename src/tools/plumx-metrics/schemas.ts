@@ -1,42 +1,108 @@
-import { z } from 'zod';
+import Type from 'typebox';
+import { nonBlankString, optionalText } from '../../schemas/fields';
+import { defineSchema } from '../../schemas/schema';
 
-const nonBlank = z
-  .string()
-  .refine((value) => value.trim().length > 0, 'Must not be blank.');
-export const inputSchema = z.strictObject({
-  idType: z
-    .enum(['doi', 'elsevierId', 'elsevierPii', 'isbn', 'pmcid', 'pmid'])
-    .describe('The native PlumX identifier type.'),
-  idValue: nonBlank
-    .refine(
-      (value) => value !== '.' && value !== '..',
-      'An identifier cannot be a dot path segment.',
-    )
-    .describe(
-      'Identifier value, e.g. 10.1103/physrevlett.116.061102. Supply the original value, not a URL-encoded string.',
+export const inputSchema = defineSchema(
+  Type.Object(
+    {
+      idType: Type.Union(
+        [
+          Type.Literal('doi'),
+          Type.Literal('elsevierId'),
+          Type.Literal('elsevierPii'),
+          Type.Literal('isbn'),
+          Type.Literal('pmcid'),
+          Type.Literal('pmid'),
+        ],
+        {
+          description:
+            'Identifier namespace used to locate the publication or artifact in PlumX.',
+        },
+      ),
+      idValue: Type.String({
+        pattern: '\\S',
+        not: { enum: ['.', '..'] },
+        description:
+          'Identifier in the selected namespace, e.g. 10.1103/physrevlett.116.061102 for doi. Supply the original value without URL encoding; a lone . or .. is not allowed.',
+      }),
+      reqId: Type.Optional(
+        nonBlankString(
+          'Caller-supplied request identifier for tracing this request with Elsevier support.',
+        ),
+      ),
+    },
+    { additionalProperties: false },
+  ),
+);
+
+const source = Type.Object(
+  {
+    name: optionalText('Name of the source contributing this metric.'),
+    total: Type.Optional(
+      Type.Union([Type.Number(), Type.Null()], {
+        description: 'Metric count reported by this source, as a JSON number.',
+      }),
     ),
-  reqId: nonBlank
-    .optional()
-    .describe('Caller-supplied request identifier for Elsevier support.'),
-});
+  },
+  { additionalProperties: true },
+);
 
-const text = z.string().nullable().optional();
-const total = z.number().nullable().optional();
-const source = z.looseObject({ name: text, total });
-const countType = z.looseObject({
-  name: text,
-  total,
-  sources: z.array(source).nullable().optional(),
-});
-const category = z.looseObject({
-  name: text,
-  total,
-  count_types: z.array(countType).nullable().optional(),
-});
+const countType = Type.Object(
+  {
+    name: optionalText('Name of the metric type within its category.'),
+    total: Type.Optional(
+      Type.Union([Type.Number(), Type.Null()], {
+        description: 'Total count for this metric type, as reported by PlumX.',
+      }),
+    ),
+    sources: Type.Optional(
+      Type.Union([Type.Array(source), Type.Null()], {
+        description:
+          'Per-source breakdown for this metric type; may be absent or null.',
+      }),
+    ),
+  },
+  { additionalProperties: true },
+);
 
-// Metric category/source names may evolve; retain unknown fields and partial metrics.
-export const outputSchema = z.looseObject({
-  id_type: z.string(),
-  id_value: z.string(),
-  count_categories: z.array(category).nullable().optional(),
-});
+const category = Type.Object(
+  {
+    name: optionalText(
+      'PlumX metric category name; categories are not restricted to a fixed list.',
+    ),
+    total: Type.Optional(
+      Type.Union([Type.Number(), Type.Null()], {
+        description:
+          'Total count for this metric category, as reported by PlumX.',
+      }),
+    ),
+    count_types: Type.Optional(
+      Type.Union([Type.Array(countType), Type.Null()], {
+        description:
+          'Metric types contributing to this category; may be absent or null.',
+      }),
+    ),
+  },
+  { additionalProperties: true },
+);
+
+// Metric names may evolve; preserve unknown fields and partial metrics.
+export const outputSchema = defineSchema(
+  Type.Object(
+    {
+      id_type: Type.String({
+        description: 'Identifier namespace returned by PlumX.',
+      }),
+      id_value: Type.String({
+        description: 'Identifier value returned by PlumX.',
+      }),
+      count_categories: Type.Optional(
+        Type.Union([Type.Array(category), Type.Null()], {
+          description:
+            'Available PlumX metric categories and their counts; may be absent or null.',
+        }),
+      ),
+    },
+    { additionalProperties: true },
+  ),
+);

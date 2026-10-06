@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test, type TestContext } from 'node:test';
 import { Client } from '@modelcontextprotocol/client';
 import { InMemoryTransport } from '@modelcontextprotocol/server';
+import { validateSchema } from '../../src/schemas/schema';
 import { createServer } from '../../src/server';
 import { ScopusClient } from '../../src/scopus/client';
 import {
@@ -78,7 +79,10 @@ for (const name of ['success', 'empty']) {
     assert.deepEqual(result._meta?.['scopus-mcp/headers'], {
       'X-RateLimit-Remaining': '12',
     });
-    assert.ok(outputSchema.safeParse(result.structuredContent).success);
+    assert.equal(
+      (await validateSchema(outputSchema, result.structuredContent)).issues,
+      undefined,
+    );
     assert.equal(mock.requests.length, 1);
     const request = mock.requests[0];
     assert.ok(request);
@@ -194,6 +198,10 @@ for (const input of [
   { 'co-author': '' },
   { 'co-author': '1,2' },
   { 'co-author': 'abc' },
+  { query: 'test', count: null },
+  { query: 'test', count: '25' },
+  { query: 'test', view: null },
+  { query: 'test', start: 4976 },
   { query: 'test', count: -1 },
   { query: 'test', count: 201 },
   { query: 'test', count: 1.5 },
@@ -210,26 +218,25 @@ for (const input of [
       t,
       new ScopusClient({ apiKey: 'test' }, mock.fetch),
     );
-    let rejected: boolean;
-    try {
-      rejected =
-        (await client.callTool({ name: 'author_search', arguments: input }))
-          .isError === true;
-    } catch {
-      rejected = true;
-    }
-    assert.ok(rejected);
+    const result = await client.callTool({
+      name: 'author_search',
+      arguments: input,
+    });
+    assert.equal(result.isError, true);
+    assert.match(JSON.stringify(result.content), /Input validation error/);
     assert.equal(mock.requests.length, 0);
   });
 }
 
-await test('author search accepts exact pagination boundaries', () => {
+await test('author search accepts exact pagination boundaries', async () => {
   for (const args of [
     { query: 'test', count: 0 },
+    { query: 'test', start: 5000, count: 0 },
+    { query: 'test', start: 4975 },
     { query: 'test', start: 4800, count: 200 },
     { 'co-author': '1', start: 4975 },
   ]) {
-    assert.ok(inputSchema.safeParse(args).success);
+    assert.equal((await validateSchema(inputSchema, args)).issues, undefined);
   }
 });
 
@@ -286,3 +293,25 @@ await test('author search rejects an unexpected successful response', async (t) 
   assert.equal(result.structuredContent, undefined);
   assert.match(JSON.stringify(result.content), /INVALID_RESPONSE/);
 });
+
+for (const [field, payload] of Object.entries({
+  count: { 'search-results': { 'opensearch:totalResults': 12 } },
+  identifier: { 'search-results': { entry: [{ 'dc:identifier': false }] } },
+  links: { 'search-results': { entry: [{ link: 'invalid-link-list' }] } },
+})) {
+  await test(`author-search rejects a malformed native ${field} field`, async (t) => {
+    const mock = mockFetch(Response.json(payload));
+    const client = await connect(
+      t,
+      new ScopusClient({ apiKey: 'test' }, mock.fetch),
+    );
+    const result = await client.callTool({
+      name: 'author_search',
+      arguments: { query: 'test' },
+    });
+    assert.equal(mock.requests.length, 1);
+    assert.equal(result.isError, true);
+    assert.equal(result.structuredContent, undefined);
+    assert.match(JSON.stringify(result.content), /INVALID_RESPONSE/);
+  });
+}
