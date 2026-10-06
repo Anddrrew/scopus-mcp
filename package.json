@@ -1,7 +1,7 @@
 {
   "name": "scopus-mcp",
   "mcpName": "io.github.Anddrrew/scopus-mcp",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Scopus API access over the Model Context Protocol (stdio).",
   "type": "module",
   "license": "MIT",
