@@ -1,76 +1,36 @@
 # Releases
 
-Releases are tags on `main`, published to npm as `latest` and listed in the MCP
-Registry. The [Release workflow](../.github/workflows/release.yml) prepares a version PR;
-merging that PR triggers publication.
+## Publish
 
-## Setup
+1. Merge the changes into `main`.
+2. Open [Actions → Release](https://github.com/Anddrrew/scopus-mcp/actions/workflows/release.yml)
+   and select **Run workflow** on `main`. Choose `patch`, `minor`, or `major`,
+   and disable `dry_run`.
+3. The workflow opens a `release/v<version>` PR. Approve its workflow run if
+   prompted, wait for CI, then merge.
 
-In GitHub **Settings → Actions → General → Workflow permissions**, enable
-**Allow GitHub Actions to create and approve pull requests**. Default token
-permissions can remain read-only; the workflow requests the permissions it needs.
+The workflow updates versions automatically. Merging the PR creates the tag,
+publishes to npm and the MCP Registry, and creates a GitHub release.
 
-In the npm package settings, add a GitHub Actions
-[trusted publisher](https://docs.npmjs.com/trusted-publishers/):
+Leave `dry_run` enabled for a check without creating a PR or publishing.
 
-| Field                | Value                                      |
-| -------------------- | ------------------------------------------ |
-| Organization or user | `Anddrrew`                                 |
-| Repository           | `scopus-mcp`                               |
-| Workflow filename    | `release.yml`                              |
-| Environment          | Leave empty                                |
-| Allowed actions      | Allow direct publishing with `npm publish` |
+## If a release fails
 
-Publishing uses OIDC; no npm token is needed in the repository.
+Check the failed step and rerun the failed **Release** run. It skips matching
+artifacts that were already published; a conflict stops the run. Don't bump the
+version just to retry publication.
 
-The [MCP Registry](https://modelcontextprotocol.io/registry/quickstart) also uses
-GitHub OIDC with the existing `id-token: write` permission. No additional secret
-or manual registration is needed. `mcpName` in `package.json` and the name in
-[`server.json`](../server.json) must both be `io.github.Anddrrew/scopus-mcp`.
-The first Registry publication requires a new npm release containing `mcpName`.
+Reruns use the original workflow revision. Start a fresh manual run for a new
+release.
 
-`server.json` describes the npm package, stdio transport, and credentials supplied
-by users; it contains no credential values. Release preparation updates both
-Registry versions alongside the npm version. The workflow validates metadata
-with the official `mcp-publisher` before publishing.
+## Publishing setup
 
-## Publish a version
+- GitHub must allow Actions to create pull requests under **Settings → Actions →
+  General → Workflow permissions**.
+- npm uses a [trusted publisher](https://docs.npmjs.com/trusted-publishers/): owner
+  `Anddrrew`, repository `scopus-mcp`, workflow `release.yml`, no environment,
+  with direct `npm publish` allowed.
+- The MCP Registry uses GitHub OIDC. Keep `mcpName` in `package.json` and `name`
+  in `server.json` set to `io.github.Anddrrew/scopus-mcp`.
 
-1. Merge the changes to release into `main`.
-2. In GitHub Actions, select **Release → Run workflow** on `main`. Choose
-   `patch` (default), `minor`, or `major`.
-3. Leave **dry_run** enabled to check the next version and package without
-   publishing. This checks the build and Registry metadata, not publish access.
-4. Run again with **dry_run** disabled. The workflow opens a
-   `release/v<version>` PR updating `package.json`, `package-lock.json`, and
-   `server.json`, or links to an existing release PR.
-5. Select **Approve workflows to run** on the release PR if prompted, then merge
-   after CI passes. GitHub requires this approval for
-   [PRs created with `GITHUB_TOKEN`](https://docs.github.com/en/actions/concepts/security/github_token).
-
-The workflow builds the release PR's merge commit, creates `v<version>`,
-publishes to npm, publishes metadata to the MCP Registry, and creates a GitHub
-release. It uses that commit even if `main` has since advanced. Only merged
-`release/v<version>` PRs from this
-repository trigger publication; the branch and package versions must match.
-Versions use stable `major.minor.patch` numbers.
-
-Use a fresh manual run for each new release; reruns use the original workflow
-revision.
-
-## Retry a failed release
-
-Fix the cause and rerun the failed **Release** run for the merged PR. The workflow
-reuses a matching tag, skips an identical npm archive and matching active Registry
-entry, and preserves an existing GitHub release. A conflicting tag, archive, or
-Registry entry stops the run. Retry the same version rather than preparing
-another version bump.
-
-## Inspect the package
-
-```sh
-npm pack --dry-run
-```
-
-This checks types, builds the CLI, and lists the package contents: `dist/`,
-`README.md`, `LICENSE`, and package metadata. The executable is `scopus-mcp`.
+Neither publisher needs a token stored in repository secrets.
