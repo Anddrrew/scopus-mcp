@@ -18,18 +18,17 @@ npm run check
 `npm ci` installs the Husky pre-push hook, which runs `npm run check`. Tests use
 synthetic API responses and run offline without credentials.
 
-| Command                  | Purpose                                                   |
-| ------------------------ | --------------------------------------------------------- |
-| `npm run dev`            | Start the stdio server from TypeScript.                   |
-| `npm run build`          | Typecheck and bundle the CLI into `dist/`.                |
-| `npm start`              | Start the built CLI.                                      |
-| `npm test`               | Build and run tests.                                      |
-| `npm run test:run`       | Run tests against an existing build.                      |
-| `npm run lint:fix`       | Apply ESLint fixes.                                       |
-| `npm run format`         | Format code and documentation.                            |
-| `npm run check`          | Run lint, formatting checks, typecheck, build, and tests. |
-| `npm pack --dry-run`     | Build and inspect the package contents.                   |
-| `npm run registry:check` | Check npm and MCP Registry identity and versions.         |
+| Command              | Purpose                                                   |
+| -------------------- | --------------------------------------------------------- |
+| `npm run dev`        | Start the stdio server from TypeScript.                   |
+| `npm run build`      | Typecheck and bundle the CLI into `dist/`.                |
+| `npm start`          | Start the built CLI.                                      |
+| `npm test`           | Build and run tests.                                      |
+| `npm run test:run`   | Run tests against an existing build.                      |
+| `npm run lint:fix`   | Apply ESLint fixes.                                       |
+| `npm run format`     | Format code and documentation.                            |
+| `npm run check`      | Run lint, formatting checks, typecheck, build, and tests. |
+| `npm pack --dry-run` | Build and inspect the package contents.                   |
 
 To use a local build, run `npm run build` and configure your MCP client:
 
@@ -74,8 +73,6 @@ test/
 docs/
   tools/                    # Tool references
   releases.md               # Release instructions
-scripts/                    # Build and release metadata utilities
-server.json                 # Public MCP Registry installation metadata
 ```
 
 Use TypeScript with extensionless relative imports. Keep types, helpers, and

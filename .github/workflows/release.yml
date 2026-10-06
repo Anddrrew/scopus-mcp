@@ -55,8 +55,6 @@ jobs:
           check-latest: true
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
-      - name: Install dependencies
-        run: npm ci
       - name: Prepare release version
         id: version
         env:
@@ -73,10 +71,29 @@ jobs:
           else
             git merge-base --is-ancestor HEAD origin/main
           fi
-          npm run registry:check
+          node --input-type=module <<'JS'
+          import { readFileSync } from 'node:fs';
+          const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+          const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
+          if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(pkg.version)) {
+            throw new Error('The current package version must be stable.');
+          }
+          if (lock.version !== pkg.version || lock.packages[''].version !== pkg.version) {
+            throw new Error('package.json and package-lock.json versions must match.');
+          }
+          const server = JSON.parse(readFileSync('server.json', 'utf8'));
+          const artifact = server.packages?.[0];
+          if (server.name !== pkg.mcpName || server.version !== pkg.version ||
+              server.packages?.length !== 1 || artifact.registryType !== 'npm' ||
+              artifact.identifier !== pkg.name || artifact.version !== pkg.version) {
+            throw new Error('MCP Registry metadata must match the npm package name and version.');
+          }
+          JS
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
             npm version "$BUMP" --no-git-tag-version --ignore-scripts
-            npm run registry:sync
+            jq --arg version "$(node -p "require('./package.json').version")" \
+              '.version = $version | .packages[0].version = $version' server.json > "$RUNNER_TEMP/server.json"
+            mv "$RUNNER_TEMP/server.json" server.json
           fi
           version=$(node -p "require('./package.json').version")
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
@@ -94,6 +111,8 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "## Release: v$version" >> "$GITHUB_STEP_SUMMARY"
+      - name: Install dependencies
+        run: npm ci
       - name: Lint
         run: npm run lint
       - name: Check formatting
@@ -104,12 +123,18 @@ jobs:
         run: npm run build
       - name: Test
         run: npm run test:run
-      - name: Set up MCP Publisher
-        uses: ./.github/actions/setup-mcp-publisher
-      - name: Validate MCP Registry metadata
+      - name: Install MCP Publisher
+        working-directory: ${{ runner.temp }}
         run: |
-          npm run registry:check
-          mcp-publisher validate server.json
+          curl --fail --silent --show-error --location --retry 3 --max-time 60 \
+            https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_linux_amd64.tar.gz \
+            --output mcp-publisher.tar.gz
+          echo 'a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc  mcp-publisher.tar.gz' | sha256sum --check
+          mkdir -p mcp-publisher-bin
+          tar -xzf mcp-publisher.tar.gz -C mcp-publisher-bin mcp-publisher
+          echo "$RUNNER_TEMP/mcp-publisher-bin" >> "$GITHUB_PATH"
+      - name: Validate MCP Registry metadata
+        run: mcp-publisher validate server.json
       - name: Build release archive
         run: npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP"
       - name: Validate publication without publishing
@@ -197,16 +222,30 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: npm publish "$RUNNER_TEMP/scopus-mcp-$RELEASE_VERSION.tgz" --access public --provenance --ignore-scripts
-      - name: Check whether MCP metadata is already published
-        if: github.event_name == 'pull_request'
-        id: registry_published
-        run: node --import tsx scripts/registry-publication.ts
-      - name: Authenticate to MCP Registry
-        if: github.event_name == 'pull_request' && steps.registry_published.outputs.exists != 'true'
-        run: mcp-publisher login github-oidc
       - name: Publish to MCP Registry
-        if: github.event_name == 'pull_request' && steps.registry_published.outputs.exists != 'true'
-        run: mcp-publisher publish server.json
+        if: github.event_name == 'pull_request'
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          name=$(jq -r '.name | @uri' server.json)
+          status=$(curl --silent --show-error --max-time 30 \
+            --output "$RUNNER_TEMP/registry.json" --write-out '%{http_code}' \
+            "https://registry.modelcontextprotocol.io/v0.1/servers/$name/versions/$RELEASE_VERSION?include_deleted=true")
+          case "$status" in
+            404)
+              mcp-publisher login github-oidc
+              mcp-publisher publish server.json
+              ;;
+            200)
+              jq -e --slurpfile expected server.json \
+                '.server == $expected[0] and ._meta["io.modelcontextprotocol.registry/official"].status == "active"' \
+                "$RUNNER_TEMP/registry.json" > /dev/null || {
+                  echo "This Registry version already exists with different metadata or is inactive."
+                  exit 1
+                }
+              ;;
+            *) echo "MCP Registry returned HTTP $status"; exit 1 ;;
+          esac
       - name: Create GitHub release
         if: github.event_name == 'pull_request'
         env:

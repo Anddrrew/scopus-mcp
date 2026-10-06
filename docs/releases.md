@@ -1,8 +1,7 @@
 # Releases
 
-Releases are tags on `main`, published to npm as `latest` and listed in the
-[official MCP Registry](https://registry.modelcontextprotocol.io/). The
-[Release workflow](../.github/workflows/release.yml) prepares a version PR;
+Releases are tags on `main`, published to npm as `latest` and listed in the MCP
+Registry. The [Release workflow](../.github/workflows/release.yml) prepares a version PR;
 merging that PR triggers publication.
 
 ## Setup
@@ -24,15 +23,16 @@ In the npm package settings, add a GitHub Actions
 
 Publishing uses OIDC; no npm token is needed in the repository.
 
-MCP Registry publishing also uses GitHub OIDC through the workflow's existing
-`id-token: write` permission. No additional secret or manual registration is
-needed. The registry name is `io.github.Anddrrew/scopus-mcp`; it must match
-`mcpName` in the npm package. The first Registry publication requires a new npm
-release containing that field; previously published packages cannot be updated.
+The [MCP Registry](https://modelcontextprotocol.io/registry/quickstart) also uses
+GitHub OIDC with the existing `id-token: write` permission. No additional secret
+or manual registration is needed. `mcpName` in `package.json` and the name in
+[`server.json`](../server.json) must both be `io.github.Anddrrew/scopus-mcp`.
+The first Registry publication requires a new npm release containing `mcpName`.
 
-[`server.json`](../server.json) describes the npm package, stdio transport, and
-the credentials users supply in their MCP client. It contains no credential
-values. Both its server version and npm package version track `package.json`.
+`server.json` describes the npm package, stdio transport, and credentials supplied
+by users; it contains no credential values. Release preparation updates both
+Registry versions alongside the npm version. The workflow validates metadata
+with the official `mcp-publisher` before publishing.
 
 ## Publish a version
 
@@ -40,20 +40,18 @@ values. Both its server version and npm package version track `package.json`.
 2. In GitHub Actions, select **Release → Run workflow** on `main`. Choose
    `patch` (default), `minor`, or `major`.
 3. Leave **dry_run** enabled to check the next version and package without
-   publishing. This checks the build and Registry metadata, not npm or Registry
-   publish access.
+   publishing. This checks the build and Registry metadata, not publish access.
 4. Run again with **dry_run** disabled. The workflow opens a
    `release/v<version>` PR updating `package.json`, `package-lock.json`, and
-   `server.json`,
-   or links to an existing release PR.
+   `server.json`, or links to an existing release PR.
 5. Select **Approve workflows to run** on the release PR if prompted, then merge
    after CI passes. GitHub requires this approval for
    [PRs created with `GITHUB_TOKEN`](https://docs.github.com/en/actions/concepts/security/github_token).
 
 The workflow builds the release PR's merge commit, creates `v<version>`,
-publishes to npm, publishes its metadata to the MCP Registry, and creates a
-GitHub release. It uses that commit even if
-`main` has since advanced. Only merged `release/v<version>` PRs from this
+publishes to npm, publishes metadata to the MCP Registry, and creates a GitHub
+release. It uses that commit even if `main` has since advanced. Only merged
+`release/v<version>` PRs from this
 repository trigger publication; the branch and package versions must match.
 Versions use stable `major.minor.patch` numbers.
 
@@ -65,28 +63,8 @@ revision.
 Fix the cause and rerun the failed **Release** run for the merged PR. The workflow
 reuses a matching tag, skips an identical npm archive and matching active Registry
 entry, and preserves an existing GitHub release. A conflicting tag, archive, or
-Registry entry stops the run. If Registry publication fails after npm succeeds,
-retry the same version rather than preparing another version bump.
-
-## Registry metadata
-
-```sh
-npm run registry:check
-```
-
-This checks package identity and version consistency offline. Release preparation
-runs `npm run registry:sync` after `npm version` to update both Registry versions;
-merged release PRs must already be consistent.
-
-PR checks and release runs also use the official `mcp-publisher validate`
-command. This contacts the Registry's validation endpoint but does not publish
-or authenticate. CI pins the publisher version and verifies its download's
-SHA-256 in [the setup action](../.github/actions/setup-mcp-publisher/action.yml).
-Update the version and checksum together when upgrading the publisher.
-
-For the publication format and authentication, see the official
-[publishing guide](https://modelcontextprotocol.io/registry/quickstart) and
-[GitHub Actions guide](https://modelcontextprotocol.io/registry/github-actions).
+Registry entry stops the run. Retry the same version rather than preparing
+another version bump.
 
 ## Inspect the package
 

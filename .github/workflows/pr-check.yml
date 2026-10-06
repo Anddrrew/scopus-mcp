@@ -40,11 +40,5 @@ jobs:
         run: npm run build
       - name: Test
         run: npm run test:run
-      - name: Set up MCP Publisher
-        uses: ./.github/actions/setup-mcp-publisher
-      - name: Validate MCP Registry metadata
-        run: |
-          npm run registry:check
-          mcp-publisher validate server.json
       - name: Package
         run: npm pack --dry-run --ignore-scripts
