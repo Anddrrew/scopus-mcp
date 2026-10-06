@@ -234,7 +234,18 @@ jobs:
           case "$status" in
             404)
               mcp-publisher login github-oidc
-              mcp-publisher publish server.json
+              for attempt in 1 2 3 4 5; do
+                if mcp-publisher publish server.json > "$RUNNER_TEMP/mcp-publish.log" 2>&1; then
+                  cat "$RUNNER_TEMP/mcp-publish.log"
+                  break
+                fi
+                cat "$RUNNER_TEMP/mcp-publish.log"
+                if [ "$attempt" -eq 5 ] || ! grep -Fq 'A newly published release can take a moment to appear on the registry' "$RUNNER_TEMP/mcp-publish.log"; then
+                  exit 1
+                fi
+                echo "npm version is not visible to the MCP Registry yet; retrying in 30 seconds."
+                sleep 30
+              done
               ;;
             200)
               jq -e --slurpfile expected server.json \
