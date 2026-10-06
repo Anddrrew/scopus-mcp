@@ -1,94 +1,136 @@
-import { z } from 'zod';
+import Type from 'typebox';
+import { nonBlankString, optionalText } from '../../schemas/fields';
+import { defineSchema } from '../../schemas/schema';
 
-const nonBlank = z
-  .string()
-  .refine((value) => value.trim().length > 0, 'Must not be blank.');
-const identifier = nonBlank.refine(
-  (value) => !/^\.+$/.test(value.trim()) && !value.includes(','),
-  'Provide one identifier that does not consist only of dots.',
+// Keep identifiers opaque, while rejecting blank values, path dot segments,
+// and comma-separated lists (this endpoint only retrieves one affiliation).
+const identifier = (description: string) =>
+  Type.String({ pattern: '^(?!\\s*(?:\\.+\\s*)?$)[^,]+$', description });
+
+export const inputSchema = defineSchema(
+  Type.Object(
+    {
+      affiliation_id: Type.Optional(
+        identifier(
+          'One Scopus affiliation ID. Provide exactly one of affiliation_id or eid; comma-separated lists are not supported.',
+        ),
+      ),
+      eid: Type.Optional(
+        identifier(
+          'One affiliation electronic ID (EID). Use instead of affiliation_id; comma-separated lists are not supported.',
+        ),
+      ),
+      view: Type.Optional(
+        Type.Union(
+          [
+            Type.Literal('BASIC'),
+            Type.Literal('LIGHT'),
+            Type.Literal('STANDARD'),
+            Type.Literal('DOCUMENTS'),
+            Type.Literal('AUTHORS'),
+            Type.Literal('ENTITLED'),
+          ],
+          {
+            description:
+              'Response view (API default: LIGHT). DOCUMENTS and AUTHORS return related records. Availability depends on entitlements.',
+          },
+        ),
+      ),
+      field: Type.Optional(
+        nonBlankString(
+          'Comma-separated response fields to include; unavailable with DOCUMENTS and AUTHORS views.',
+        ),
+      ),
+      startref: Type.Optional(
+        Type.Integer({
+          minimum: 0,
+          maximum: Number.MAX_SAFE_INTEGER,
+          description:
+            'Zero-based result offset for related documents or authors. No additional pages are fetched automatically.',
+        }),
+      ),
+      refcount: Type.Optional(
+        Type.Integer({
+          minimum: 0,
+          maximum: Number.MAX_SAFE_INTEGER,
+          description:
+            'Number of related documents or authors to return; API limits depend on service level.',
+        }),
+      ),
+      reqId: Type.Optional(
+        nonBlankString(
+          'Caller-supplied request identifier for Elsevier support.',
+        ),
+      ),
+      ver: Type.Optional(nonBlankString('Elsevier resource version.')),
+    },
+    {
+      additionalProperties: false,
+      oneOf: [{ required: ['affiliation_id'] }, { required: ['eid'] }],
+      if: {
+        required: ['view'],
+        properties: { view: { enum: ['DOCUMENTS', 'AUTHORS'] } },
+      },
+      then: { not: { required: ['field'] } },
+    },
+  ),
 );
 
-export const inputSchema = z
-  .strictObject({
-    affiliation_id: identifier
-      .optional()
-      .describe(
-        'One Scopus affiliation ID. Provide exactly one of affiliation_id or eid.',
+const profile = Type.Object(
+  {
+    coredata: Type.Optional(
+      Type.Union(
+        [
+          Type.Object(
+            {
+              'dc:identifier': optionalText(
+                'Scopus affiliation identifier, usually prefixed with AFFILIATION_ID:.',
+              ),
+              'prism:url': optionalText(
+                'Elsevier API URL for this affiliation profile.',
+              ),
+              eid: optionalText(
+                'Scopus electronic identifier (EID) for the affiliation.',
+              ),
+              'author-count': optionalText(
+                'Number of authors associated with the affiliation, preserved as the API string.',
+              ),
+              'document-count': optionalText(
+                'Number of documents associated with the affiliation, preserved as the API string.',
+              ),
+            },
+            { additionalProperties: true },
+          ),
+          Type.Null(),
+        ],
+        {
+          description:
+            'Core affiliation identifiers and counts; available fields depend on the requested view.',
+        },
       ),
-    eid: identifier
-      .optional()
-      .describe(
-        'One affiliation electronic ID. Use instead of affiliation_id.',
-      ),
-    view: z
-      .enum(['BASIC', 'LIGHT', 'STANDARD', 'DOCUMENTS', 'AUTHORS', 'ENTITLED'])
-      .optional()
-      .describe(
-        'Response view (API default: LIGHT); availability depends on entitlements.',
-      ),
-    field: nonBlank
-      .optional()
-      .describe(
-        'Comma-separated response fields; unavailable with DOCUMENTS and AUTHORS views.',
-      ),
-    startref: z
-      .int()
-      .min(0)
-      .optional()
-      .describe('Zero-based result offset for related documents or authors.'),
-    refcount: z
-      .int()
-      .min(0)
-      .optional()
-      .describe(
-        'Number of related documents or authors; limits depend on API service level.',
-      ),
-    reqId: nonBlank
-      .optional()
-      .describe('Caller-supplied request identifier for Elsevier support.'),
-    ver: nonBlank.optional().describe('Elsevier resource version.'),
-  })
-  .superRefine((input, ctx) => {
-    if ((input.affiliation_id === undefined) === (input.eid === undefined)) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['affiliation_id'],
-        message: 'Provide exactly one of affiliation_id or eid.',
-      });
-    }
-    if (
-      input.field !== undefined &&
-      (input.view === 'DOCUMENTS' || input.view === 'AUTHORS')
-    ) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['field'],
-        message: 'field cannot be combined with DOCUMENTS or AUTHORS views.',
-      });
-    }
-  });
-
-const optionalText = z.string().nullable().optional();
-const profile = z.looseObject({
-  coredata: z
-    .looseObject({
-      'dc:identifier': optionalText,
-      'prism:url': optionalText,
-      eid: optionalText,
-      'author-count': optionalText,
-      'document-count': optionalText,
-    })
-    .nullable()
-    .optional(),
-  'affiliation-name': optionalText,
-  city: optionalText,
-  country: optionalText,
-});
+    ),
+    'affiliation-name': optionalText(
+      'Name of the affiliation in the Scopus profile.',
+    ),
+    city: optionalText('City of the affiliation.'),
+    country: optionalText('Country of the affiliation.'),
+  },
+  { additionalProperties: true },
+);
 
 // Preserve partial profiles and view-specific content without normalizing
-// Elsevier's strings, nulls, unknown fields, or object/array cardinality.
-export const outputSchema = z.looseObject({
-  'affiliation-retrieval-response': z
-    .union([profile, z.array(profile)])
-    .nullable(),
-});
+// Elsevier’s strings, nulls, unknown fields, or object/array cardinality.
+export const outputSchema = defineSchema(
+  Type.Object(
+    {
+      'affiliation-retrieval-response': Type.Union(
+        [profile, Type.Array(profile), Type.Null()],
+        {
+          description:
+            'Affiliation response in Elsevier’s native object, array, or null representation. May contain a profile or related documents/authors according to view; unrecognized fields are preserved.',
+        },
+      ),
+    },
+    { additionalProperties: true },
+  ),
+);

@@ -2,9 +2,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test, type TestContext } from 'node:test';
 import { Client } from '@modelcontextprotocol/client';
-import { InMemoryTransport } from '@modelcontextprotocol/server';
+import {
+  fromJsonSchema,
+  type JsonSchemaType,
+  InMemoryTransport,
+} from '@modelcontextprotocol/server';
 import { createServer } from '../../src/server';
 import { ScopusClient } from '../../src/scopus/client';
+import { validateSchema } from '../../src/schemas/schema';
 import {
   inputSchema,
   outputSchema,
@@ -62,6 +67,67 @@ await test('author retrieval advertises identifiers, output envelopes, and read-
   assert.equal(mock.requests.length, 0);
 });
 
+await test('published author schema enforces identifier choice and batch restrictions without server refinements', async (t) => {
+  const mock = mockFetch(Response.json({}));
+  const client = await connect(t, new ScopusClient({}, mock.fetch));
+  const { tools } = await client.listTools();
+  const tool = tools.find((item) => item.name === 'author_retrieval');
+  assert.ok(tool);
+  const published = fromJsonSchema(tool.inputSchema as JsonSchemaType);
+
+  for (const input of [
+    {
+      author_id: '1',
+      view: 'DOCUMENTS',
+      alias: false,
+      startref: 0,
+      refcount: 0,
+    },
+    { eid: '9-s2.0-1,9-s2.0-2', view: 'METRICS', field: 'identifier' },
+    { orcid: '0000-0001-2345-6789' },
+    { author_id: ' 1 , 2 ' },
+    { author_id: '. .' },
+  ]) {
+    assert.equal(
+      (await validateSchema(published, input)).issues,
+      undefined,
+      JSON.stringify(input),
+    );
+  }
+
+  for (const input of [
+    {},
+    { author_id: '1', eid: '2' },
+    { author_id: '1', eid: '2', orcid: '3' },
+    { orcid: '1,2' },
+    { author_id: '1, .. ,2' },
+    { author_id: '1,2', view: 'DOCUMENTS' },
+    { eid: '1,2', alias: true },
+    { author_id: '1,2', startref: 0 },
+    { eid: '1,2', refcount: 0 },
+  ]) {
+    assert.ok(
+      (await validateSchema(published, input)).issues,
+      JSON.stringify(input),
+    );
+  }
+
+  assert.ok(tool.outputSchema);
+  const publishedOutput = fromJsonSchema(tool.outputSchema as JsonSchemaType);
+  assert.ok((await validateSchema(publishedOutput, {})).issues);
+  for (const output of [
+    { 'author-retrieval-response': null },
+    { 'author-retrieval-response-list': null },
+    { 'author-retrieval-response': {}, 'author-retrieval-response-list': {} },
+  ]) {
+    assert.equal(
+      (await validateSchema(publishedOutput, output)).issues,
+      undefined,
+    );
+  }
+  assert.equal(mock.requests.length, 0);
+});
+
 for (const [name, input, pathname] of [
   [
     'single',
@@ -105,7 +171,10 @@ for (const [name, input, pathname] of [
     assert.deepEqual(result._meta?.['scopus-mcp/headers'], {
       'X-RateLimit-Remaining': '15',
     });
-    assert.ok(outputSchema.safeParse(result.structuredContent).success);
+    assert.equal(
+      (await validateSchema(outputSchema, result.structuredContent)).issues,
+      undefined,
+    );
     assert.equal(mock.requests.length, 1);
     const request = mock.requests[0];
     assert.ok(request);
@@ -194,17 +263,36 @@ await test('author identifiers are encoded as one path segment without invented 
   assert.equal(url.hash, '');
 });
 
-await test('author schemas allow API-determined sizes and documented BASIC view', () => {
-  assert.ok(inputSchema.safeParse({ author_id: '1', view: 'BASIC' }).success);
-  assert.ok(
-    inputSchema.safeParse({ author_id: '1', startref: 10000, refcount: 10000 })
-      .success,
-  );
-  assert.ok(
-    inputSchema.safeParse({
-      author_id: Array.from({ length: 100 }, (_, i) => String(i)).join(','),
-    }).success,
-  );
+await test('author schemas allow API-determined sizes and documented BASIC view', async () => {
+  for (const input of [
+    { author_id: '1', view: 'BASIC' },
+    { author_id: '1', startref: 10000, refcount: 10000 },
+    { author_id: Array.from({ length: 100 }, (_, i) => String(i)).join(',') },
+  ]) {
+    assert.equal((await validateSchema(inputSchema, input)).issues, undefined);
+  }
+});
+
+await test('author identifiers preserve padded values and reject blank or dot-only segments', async () => {
+  const padding = ' '.repeat(20_000);
+  for (const key of ['author_id', 'eid', 'orcid']) {
+    const input = { [key]: `${padding}1${padding}` };
+    assert.deepEqual(await validateSchema(inputSchema, input), {
+      value: input,
+    });
+    for (const value of [padding, `${padding}..${padding}`]) {
+      assert.ok((await validateSchema(inputSchema, { [key]: value })).issues);
+    }
+  }
+  for (const key of ['author_id', 'eid']) {
+    const input = { [key]: `${padding}1,${padding}2` };
+    assert.deepEqual(await validateSchema(inputSchema, input), {
+      value: input,
+    });
+    for (const value of [`1,${padding}`, `1,${padding}..${padding},2`]) {
+      assert.ok((await validateSchema(inputSchema, { [key]: value })).issues);
+    }
+  }
 });
 
 for (const payload of [
@@ -238,9 +326,13 @@ for (const input of [
   { author_id: '' },
   { author_id: '   ' },
   { author_id: '..' },
+  { author_id: ' .. ' },
   { eid: '.' },
   { author_id: '1,,2' },
   { author_id: '1, ' },
+  { author_id: '1, .. ,2' },
+  { eid: ',1' },
+  { orcid: ' \t' },
   { author_id: '1', eid: '2' },
   { author_id: '1', orcid: '2' },
   { eid: '1', orcid: '2' },
@@ -251,6 +343,8 @@ for (const input of [
   { eid: '1,2', refcount: 1 },
   { author_id: '1', startref: -1 },
   { author_id: '1', refcount: 1.5 },
+  { author_id: '1', refcount: Number.MAX_SAFE_INTEGER + 1 },
+  { author_id: '1', startref: Number.MAX_SAFE_INTEGER + 1 },
   { author_id: '1', view: 'ORCID' },
   { author_id: '1', field: ' ' },
   { author_id: '1', apiKey: 'forbidden' },
@@ -261,17 +355,12 @@ for (const input of [
       t,
       new ScopusClient({ apiKey: 'test' }, mock.fetch),
     );
-    let rejected: boolean;
-    try {
-      const result = await client.callTool({
-        name: 'author_retrieval',
-        arguments: input,
-      });
-      rejected = result.isError === true;
-    } catch {
-      rejected = true;
-    }
-    assert.ok(rejected);
+    const result = await client.callTool({
+      name: 'author_retrieval',
+      arguments: input,
+    });
+    assert.equal(result.isError, true);
+    assert.match(JSON.stringify(result.content), /Input validation error/);
     assert.equal(mock.requests.length, 0);
   });
 }

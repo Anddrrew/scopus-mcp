@@ -1,4 +1,5 @@
-import { z } from 'zod';
+import { validateSchema } from '../schemas/schema';
+import { errorBodySchema } from './error-schema';
 
 export class ScopusError extends Error {
   constructor(
@@ -12,28 +13,14 @@ export class ScopusError extends Error {
   }
 }
 
-const statusSchema = z.object({
-  statusCode: z.string().optional(),
-  statusText: z.string().optional(),
-});
-const errorBodySchema = z.object({
-  'service-error': z.object({ status: statusSchema }).optional(),
-  'error-response': z
-    .object({
-      errorCode: z.string().optional(),
-      errorMessage: z.string().optional(),
-    })
-    .optional(),
-});
-
-export function apiError(
+export async function apiError(
   status: number,
   body: unknown,
   headers: Record<string, string>,
   secrets: string[],
-): ScopusError {
-  const parsed = errorBodySchema.safeParse(body);
-  const details = parsed.success ? parsed.data : undefined;
+): Promise<ScopusError> {
+  const parsed = await validateSchema(errorBodySchema, body);
+  const details = parsed.issues ? undefined : parsed.value;
   const service = details?.['service-error']?.status;
   const gateway = details?.['error-response'];
   const messages: Record<number, string> = {

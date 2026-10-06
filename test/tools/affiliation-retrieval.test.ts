@@ -2,9 +2,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test, type TestContext } from 'node:test';
 import { Client } from '@modelcontextprotocol/client';
-import { InMemoryTransport } from '@modelcontextprotocol/server';
+import {
+  fromJsonSchema,
+  type JsonSchemaType,
+  InMemoryTransport,
+} from '@modelcontextprotocol/server';
 import { createServer } from '../../src/server';
 import { ScopusClient } from '../../src/scopus/client';
+import { validateSchema } from '../../src/schemas/schema';
 import {
   inputSchema,
   outputSchema,
@@ -62,6 +67,46 @@ await test('affiliation retrieval advertises native parameters and a read-only J
   assert.equal(mock.requests.length, 0);
 });
 
+await test('published affiliation schema enforces exclusive identifiers and view-specific fields', async (t) => {
+  const mock = mockFetch(Response.json({}));
+  const client = await connect(t, new ScopusClient({}, mock.fetch));
+  const { tools } = await client.listTools();
+  const tool = tools.find((item) => item.name === 'affiliation_retrieval');
+  assert.ok(tool);
+  const published = fromJsonSchema(tool.inputSchema as JsonSchemaType);
+
+  for (const input of [
+    { affiliation_id: '1', field: 'identifier' },
+    { affiliation_id: '1', view: 'STANDARD', field: 'identifier' },
+    { eid: '10-s2.0-1', view: 'DOCUMENTS', startref: 0, refcount: 0 },
+    { affiliation_id: '1', view: 'AUTHORS' },
+    { affiliation_id: ' 1 ' },
+    { affiliation_id: '. .' },
+  ]) {
+    assert.equal(
+      (await validateSchema(published, input)).issues,
+      undefined,
+      JSON.stringify(input),
+    );
+  }
+
+  for (const input of [
+    {},
+    { affiliation_id: '1', eid: '2' },
+    { affiliation_id: '1,2' },
+    { affiliation_id: ' .. ' },
+    { eid: '\t' },
+    { affiliation_id: '1', view: 'DOCUMENTS', field: 'title' },
+    { affiliation_id: '1', view: 'AUTHORS', field: 'identifier' },
+  ]) {
+    assert.ok(
+      (await validateSchema(published, input)).issues,
+      JSON.stringify(input),
+    );
+  }
+  assert.equal(mock.requests.length, 0);
+});
+
 for (const [name, input, pathname] of [
   [
     'single',
@@ -103,7 +148,10 @@ for (const [name, input, pathname] of [
     assert.deepEqual(result._meta?.['scopus-mcp/headers'], {
       'X-RateLimit-Remaining': '14',
     });
-    assert.ok(outputSchema.safeParse(result.structuredContent).success);
+    assert.equal(
+      (await validateSchema(outputSchema, result.structuredContent)).issues,
+      undefined,
+    );
     assert.equal(mock.requests.length, 1);
     const request = mock.requests[0];
     assert.ok(request);
@@ -166,18 +214,30 @@ await test('affiliation identifiers remain within one encoded path segment', asy
   assert.equal(url.hash, '');
 });
 
-await test('affiliation retrieval supports BASIC and leaves service limits to Elsevier', () => {
-  assert.ok(
-    inputSchema.safeParse({ affiliation_id: '60000001', view: 'BASIC' })
-      .success,
-  );
-  assert.ok(
-    inputSchema.safeParse({
+await test('affiliation retrieval supports BASIC and leaves service limits to Elsevier', async () => {
+  for (const input of [
+    { affiliation_id: '60000001', view: 'BASIC' },
+    {
       affiliation_id: '60000001',
       startref: 10000,
       refcount: 10000,
-    }).success,
-  );
+    },
+  ]) {
+    assert.equal((await validateSchema(inputSchema, input)).issues, undefined);
+  }
+});
+
+await test('affiliation identifiers preserve padded values and reject blank or dot-only values', async () => {
+  const padding = ' '.repeat(20_000);
+  for (const key of ['affiliation_id', 'eid']) {
+    const input = { [key]: `${padding}1${padding}` };
+    assert.deepEqual(await validateSchema(inputSchema, input), {
+      value: input,
+    });
+    for (const value of [padding, `${padding}..${padding}`]) {
+      assert.ok((await validateSchema(inputSchema, { [key]: value })).issues);
+    }
+  }
 });
 
 for (const payload of [
@@ -217,6 +277,7 @@ for (const input of [
   { affiliation_id: '' },
   { affiliation_id: ' ' },
   { affiliation_id: '..' },
+  { affiliation_id: ' .. ' },
   { eid: '.' },
   { affiliation_id: '1,2' },
   { eid: '1,2' },
@@ -226,6 +287,8 @@ for (const input of [
   { affiliation_id: '1', view: 'AUTHORS', field: 'identifier' },
   { affiliation_id: '1', startref: -1 },
   { affiliation_id: '1', refcount: 1.5 },
+  { affiliation_id: '1', refcount: Number.MAX_SAFE_INTEGER + 1 },
+  { affiliation_id: '1', startref: Number.MAX_SAFE_INTEGER + 1 },
   { affiliation_id: '1', field: ' ' },
   { affiliation_id: '1', alias: false },
   { affiliation_id: '1', apiKey: 'forbidden' },
@@ -236,17 +299,12 @@ for (const input of [
       t,
       new ScopusClient({ apiKey: 'test' }, mock.fetch),
     );
-    let rejected: boolean;
-    try {
-      const result = await client.callTool({
-        name: 'affiliation_retrieval',
-        arguments: input,
-      });
-      rejected = result.isError === true;
-    } catch {
-      rejected = true;
-    }
-    assert.ok(rejected);
+    const result = await client.callTool({
+      name: 'affiliation_retrieval',
+      arguments: input,
+    });
+    assert.equal(result.isError, true);
+    assert.match(JSON.stringify(result.content), /Input validation error/);
     assert.equal(mock.requests.length, 0);
   });
 }
