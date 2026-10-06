@@ -235,24 +235,29 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
+          started_at=$SECONDS
           name=$(jq -r '.name | @uri' server.json)
           status=$(curl --silent --show-error --max-time 30 \
             --output "$RUNNER_TEMP/registry.json" --write-out '%{http_code}' \
             "https://registry.modelcontextprotocol.io/v0.1/servers/$name/versions/$RELEASE_VERSION?include_deleted=true")
           case "$status" in
             404)
-              for attempt in {1..12}; do
+              for attempt_at in 30 150 300; do
+                wait_seconds=$((started_at + attempt_at - SECONDS))
+                if [ "$wait_seconds" -gt 0 ]; then
+                  echo "Waiting $wait_seconds seconds for the MCP Registry publish attempt at +${attempt_at}s."
+                  sleep "$wait_seconds"
+                fi
                 mcp-publisher login github-oidc
                 if mcp-publisher publish server.json > "$RUNNER_TEMP/mcp-publish.log" 2>&1; then
                   cat "$RUNNER_TEMP/mcp-publish.log"
                   break
                 fi
                 cat "$RUNNER_TEMP/mcp-publish.log"
-                if [ "$attempt" -eq 12 ] || ! grep -Fq 'A newly published release can take a moment to appear on the registry' "$RUNNER_TEMP/mcp-publish.log"; then
+                if [ "$attempt_at" -eq 300 ] || ! grep -Fq 'A newly published release can take a moment to appear on the registry' "$RUNNER_TEMP/mcp-publish.log"; then
                   exit 1
                 fi
-                echo "npm version is not visible to the MCP Registry yet; retrying in 30 seconds."
-                sleep 30
+                echo "npm version is not visible to the MCP Registry yet; waiting for the next scheduled attempt."
               done
               ;;
             200)
