@@ -55,6 +55,8 @@ jobs:
           check-latest: true
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
+      - name: Install dependencies
+        run: npm ci
       - name: Prepare release version
         id: version
         env:
@@ -71,19 +73,10 @@ jobs:
           else
             git merge-base --is-ancestor HEAD origin/main
           fi
-          node --input-type=module <<'JS'
-          import { readFileSync } from 'node:fs';
-          const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
-          const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
-          if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(pkg.version)) {
-            throw new Error('The current package version must be stable.');
-          }
-          if (lock.version !== pkg.version || lock.packages[''].version !== pkg.version) {
-            throw new Error('package.json and package-lock.json versions must match.');
-          }
-          JS
+          npm run registry:check
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
             npm version "$BUMP" --no-git-tag-version --ignore-scripts
+            npm run registry:sync
           fi
           version=$(node -p "require('./package.json').version")
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
@@ -101,8 +94,6 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "## Release: v$version" >> "$GITHUB_STEP_SUMMARY"
-      - name: Install dependencies
-        run: npm ci
       - name: Lint
         run: npm run lint
       - name: Check formatting
@@ -113,6 +104,12 @@ jobs:
         run: npm run build
       - name: Test
         run: npm run test:run
+      - name: Set up MCP Publisher
+        uses: ./.github/actions/setup-mcp-publisher
+      - name: Validate MCP Registry metadata
+        run: |
+          npm run registry:check
+          mcp-publisher validate server.json
       - name: Build release archive
         run: npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP"
       - name: Validate publication without publishing
@@ -137,7 +134,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git switch -c "$branch"
-          git add package.json package-lock.json
+          git add package.json package-lock.json server.json
           git commit -m "chore: release v$RELEASE_VERSION"
           remote_branch=$(git ls-remote --heads origin "refs/heads/$branch")
           if [ -n "$remote_branch" ]; then
@@ -147,12 +144,12 @@ jobs:
             git push origin "HEAD:refs/heads/$branch"
           fi
           cat > "$RUNNER_TEMP/release-pr.md" <<'BODY'
-          Updates the package and lockfile versions for the next npm release.
+          Updates the package, lockfile, and MCP Registry metadata versions.
 
           Approve the CI workflow run if GitHub requests it, then merge this PR
           after the checks pass. Merging starts publication from the merge commit:
-          the Release workflow creates the version tag, publishes to npm, and
-          creates the GitHub release.
+          the Release workflow creates the version tag, publishes to npm and
+          the MCP Registry, and creates the GitHub release.
           BODY
           pr_url=$(gh pr create --base main --head "$branch" \
             --title "chore: release v$RELEASE_VERSION" \
@@ -200,6 +197,16 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: npm publish "$RUNNER_TEMP/scopus-mcp-$RELEASE_VERSION.tgz" --access public --provenance --ignore-scripts
+      - name: Check whether MCP metadata is already published
+        if: github.event_name == 'pull_request'
+        id: registry_published
+        run: node --import tsx scripts/registry-publication.ts
+      - name: Authenticate to MCP Registry
+        if: github.event_name == 'pull_request' && steps.registry_published.outputs.exists != 'true'
+        run: mcp-publisher login github-oidc
+      - name: Publish to MCP Registry
+        if: github.event_name == 'pull_request' && steps.registry_published.outputs.exists != 'true'
+        run: mcp-publisher publish server.json
       - name: Create GitHub release
         if: github.event_name == 'pull_request'
         env:

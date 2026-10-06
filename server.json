@@ -1,0 +1,37 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.Anddrrew/scopus-mcp",
+  "title": "Scopus",
+  "description": "Scopus search, author and affiliation profiles, citation data, and PlumX metrics via Elsevier APIs.",
+  "repository": {
+    "url": "https://github.com/Anddrrew/scopus-mcp",
+    "source": "github"
+  },
+  "version": "0.3.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "scopus-mcp",
+      "version": "0.3.0",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "ELSEVIER_API_KEY",
+          "description": "Elsevier API key from https://dev.elsevier.com. Required for every tool except subject_classifications; data access depends on your subscription and institutional access.",
+          "format": "string",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "ELSEVIER_INST_TOKEN",
+          "description": "Institutional token supplied by Elsevier, if available for your institution. Used alongside the API key for institutional access.",
+          "format": "string",
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}
