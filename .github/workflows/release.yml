@@ -199,7 +199,9 @@ jobs:
           import { createHash } from 'node:crypto';
           import { appendFileSync, readFileSync } from 'node:fs';
           const version = process.env.RELEASE_VERSION;
-          const response = await fetch(`https://registry.npmjs.org/scopus-mcp/${version}`, {
+          // Avoid requesting an unpublished version URL, which may cache a 404.
+          const response = await fetch('https://registry.npmjs.org/scopus-mcp', {
+            headers: { 'Cache-Control': 'no-cache' },
             signal: AbortSignal.timeout(30_000),
           });
           if (response.status === 404) {
@@ -208,13 +210,19 @@ jobs:
             if (!response.ok) {
               throw new Error(`npm registry returned HTTP ${response.status}`);
             }
-            const published = await response.json();
-            const archive = readFileSync(`${process.env.RUNNER_TEMP}/scopus-mcp-${version}.tgz`);
-            const integrity = `sha512-${createHash('sha512').update(archive).digest('base64')}`;
-            if (published.dist?.integrity !== integrity) {
-              throw new Error('This version is already published with a different archive.');
+            const metadata = await response.json();
+            if (!metadata.versions || typeof metadata.versions !== 'object') {
+              throw new Error('npm registry returned invalid package metadata.');
             }
-            appendFileSync(process.env.GITHUB_OUTPUT, 'exists=true\n');
+            const published = metadata.versions[version];
+            if (published) {
+              const archive = readFileSync(`${process.env.RUNNER_TEMP}/scopus-mcp-${version}.tgz`);
+              const integrity = `sha512-${createHash('sha512').update(archive).digest('base64')}`;
+              if (published.dist?.integrity !== integrity) {
+                throw new Error('This version is already published with a different archive.');
+              }
+            }
+            appendFileSync(process.env.GITHUB_OUTPUT, `exists=${Boolean(published)}\n`);
           }
           JS
       - name: Publish to npm with trusted publishing
@@ -227,24 +235,29 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
+          started_at=$SECONDS
           name=$(jq -r '.name | @uri' server.json)
           status=$(curl --silent --show-error --max-time 30 \
             --output "$RUNNER_TEMP/registry.json" --write-out '%{http_code}' \
             "https://registry.modelcontextprotocol.io/v0.1/servers/$name/versions/$RELEASE_VERSION?include_deleted=true")
           case "$status" in
             404)
-              mcp-publisher login github-oidc
-              for attempt in 1 2 3 4 5; do
+              for attempt_at in 30 150 300; do
+                wait_seconds=$((started_at + attempt_at - SECONDS))
+                if [ "$wait_seconds" -gt 0 ]; then
+                  echo "Waiting $wait_seconds seconds for the MCP Registry publish attempt at +${attempt_at}s."
+                  sleep "$wait_seconds"
+                fi
+                mcp-publisher login github-oidc
                 if mcp-publisher publish server.json > "$RUNNER_TEMP/mcp-publish.log" 2>&1; then
                   cat "$RUNNER_TEMP/mcp-publish.log"
                   break
                 fi
                 cat "$RUNNER_TEMP/mcp-publish.log"
-                if [ "$attempt" -eq 5 ] || ! grep -Fq 'A newly published release can take a moment to appear on the registry' "$RUNNER_TEMP/mcp-publish.log"; then
+                if [ "$attempt_at" -eq 300 ] || ! grep -Fq 'A newly published release can take a moment to appear on the registry' "$RUNNER_TEMP/mcp-publish.log"; then
                   exit 1
                 fi
-                echo "npm version is not visible to the MCP Registry yet; retrying in 30 seconds."
-                sleep 30
+                echo "npm version is not visible to the MCP Registry yet; waiting for the next scheduled attempt."
               done
               ;;
             200)
